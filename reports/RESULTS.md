@@ -145,14 +145,52 @@ path's case for case. Elapsed includes the first-call graph capture.
 **Negative control.** `valid_fee --no-adapter` on the fast path: `TRACE_MISMATCH` at chip token 21,
 the same `F0(24012)` ≠ `F0(32716)` signature as the slow path.
 
+## Clang ELF on the neural layers (fast path, 2026-10-30)
+
+`build/ckb_bridge_clang.elf` (clang-17 + LLD, `rv32im_zba`, sha256 `d71d1d63…6c056c`): **11/12 PASS**
+with exactly the same outputs as the GNU ELF, lock error None, replay ok and 0 wrong predictions
+on every run; `leading_noise` is INPUT_MISMATCH for the same transcription reason. Chip token counts
+are ~10% lower (e.g. `valid_fee` 3441 vs 3881; range 2817–3441) from Zba and Clang's codegen.
+Logs: `reports/logs/neural-*-clang-fast.log`.
+
+## Controlled text-token feed (HANDOFF §8, 2026-10-30)
+
+`scripts/forced_feed.py` (`run_neural.py --force-call`) subclasses `RvChat` without modifying
+upstream. Every forward pass is unchanged, so each forced token runs through the chip layers and
+Qwen's layers after the firmware snapshot is injected. Only the *returned logits* are replaced by
+a one-hot choice of the next token of the exact tool call, and only while the circuit does not own
+the position. The model's own first token must open the call (it did: `<tool_call>`); after the
+last forced token (`</tool_call>`) the circuit owns GO and its output exactly as unforced. The run
+fails as `FORCE_FAILED` unless the generated stream begins with exactly the forced tokens and the
+circuit never claimed a forced slot. Lockstep and replay stay on.
+
+| case | ELF | status | output | forced tokens | chip tokens | lock / replay |
+|---|---|---|---|---|---|---|
+| valid_fee (positive control) | GNU | PASS | `PASS;FEE=000000003B9ACA00` | 74 | 3881 (= unforced) | None / ok, 0 wrong |
+| leading_noise | GNU | **PASS** | `FAIL;R=FMT` | 75 | 2855 | None / ok, 0 wrong |
+| leading_noise | Clang | **PASS** | `FAIL;R=FMT` | 75 | 2645 | None / ok, 0 wrong |
+
+With the exact payload (leading space included) reaching the CPU, the firmware rejects it as the
+oracle does. **All 12 fixtures now pass on the neural layers**, 11 unaided and `leading_noise` via
+the controlled feed. Logs: `reports/logs/neural-*-forced-*.log`.
+
+## Triton executor (2026-10-30)
+
+Upstream's executor (`tritonexec.Executor2`) is built from the circuit **IR** (`core.build`), not
+from the checkpoint's chip-layer weights: it is a fast interpreter of the circuit. Per AGENTS.md
+an executor-only run is therefore *not* neural inference, and `run_neural.py --executor` labels
+its mode `circuit_executor_not_neural`. Not reported as a result here.
+
+What was tested is upstream's `executor="verify"` (`--executor-verify`): the real-weights fast chip
+view produces every token, and the executor runs alongside with its residual compared on every
+token. `valid_fee`: **PASS**, `verify_mismatch` 0 over 3881 chip tokens, lock None, replay ok, 56.6 s.
+So the Triton kernels and `torch.cuda.CUDAGraph` work on HIP and agree with the weights bit-for-bit
+on this run. Log: `reports/logs/neural-valid_fee-executor-verify.log`.
+
 ## Not done / open
 
-- **Executor (`--executor`) not run.** Its Triton fp32 kernels and `torch.cuda.CUDAGraph` on HIP
-  are untested; the fast path above is now covered.
-- **`leading_noise`** needs the HANDOFF §8 controlled text-token feed (forced tokens still passing
-  through every layer, owned by Qwen, before `</tool_call>`), or a fixture that avoids the
-  tokenizer's whitespace merge. Not implemented.
-- The **Clang ELF** passed Gate 1 but was not run on the neural layers.
+- Executor-only timing was not measured (it is not neural inference); only verify mode was run.
+- The forced feed and executor verify were run on the cases above, not the full 12 × 2 matrix.
 - Upstream `fastexec` `KeyError: 'Q'` not investigated (outside the `RvChat` path).
 - Margin: the longest tool call (`trailing`) uses 79 of upstream's 80-row capture window; longer
   payloads silently overwrite the last row (`rows[min(cap, CAP_MAX)]`).
@@ -176,6 +214,8 @@ $PY $POC/scripts/run_upstream_reference.py --elf $POC/build/ckb_bridge.elf --tok
 $PY $POC/scripts/run_calc_smoke.py $M --slow                       # Gate 0 baseline
 $PY $POC/scripts/run_neural.py --model $M --elf $POC/build/ckb_bridge.elf --case valid_fee --slow
 $PY $POC/scripts/gpucheck_compact.py --decode                    # fast-path bitwise proof
+$PY $POC/scripts/run_neural.py --model $M --elf $POC/build/ckb_bridge.elf --case leading_noise --force-call
+$PY $POC/scripts/run_neural.py --model $M --elf $POC/build/ckb_bridge.elf --case valid_fee --executor-verify
 $PY $POC/scripts/run_neural.py --model $M --elf $POC/build/ckb_bridge.elf --case valid_fee   # fast path
 ```
 

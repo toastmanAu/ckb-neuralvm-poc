@@ -5,10 +5,10 @@ CPU layers** of [Qwenputer](https://github.com/divagr18/qwenputer) (Qwen3.5-4B-Q
 against an independent Python oracle and upstream's software reference machine.
 
 **Status (2026-10-30): Gate 3 reached on AMD ROCm (RX 7900 XTX), on both the slow HF path and the
-fast compacted path (~45 s per case instead of ~3.5 min).** 11 of 12 fixtures
-ran exactly on the neural chip layers, with live lockstep against `ref.Machine` and a full IR replay
-both clean. The 12th (`leading_noise`) failed because Qwen dropped a leading space when writing the
-tool call; the CPU executed what it was given correctly. Full write-up, evidence and rerun commands:
+fast compacted path (~45 s per case instead of ~3.5 min), with both the GNU and Clang ELFs.** All
+12 fixtures run exactly on the neural chip layers, with live lockstep against `ref.Machine` and a
+full IR replay both clean: 11 unaided, and `leading_noise` (where Qwen drops a leading space when
+writing the tool call) via the HANDOFF §8 controlled token feed. Full write-up, evidence and rerun commands:
 **[`reports/RESULTS.md`](reports/RESULTS.md)**.
 
 **This is NOT a CKB-VM implementation.** The firmware is deliberately a 32-bit toy check (1 input
@@ -25,6 +25,9 @@ and makes no consensus, proof-of-execution or security claim.
 | Upstream `calc` demo on ROCm | fails without adapter (lockstep divergence at chip token 15); passes with it |
 | Neural fixtures, slow path (`--slow`) | 11 PASS, 1 INPUT_MISMATCH; ~3.1–3.9k chip tokens and ~3.5 min each |
 | Neural fixtures, fast path (default) | identical results and chip token counts; 41–52 s each |
+| Neural fixtures, Clang ELF (fast) | 11 PASS, 1 INPUT_MISMATCH; ~10% fewer chip tokens |
+| `leading_noise` with `--force-call` | PASS (`FAIL;R=FMT`) on both ELFs; forced `valid_fee` control unchanged |
+| Triton executor, verify mode | matches real-weights residual on every token (0 mismatches) |
 
 **ROCm finding.** The circuit is exact only if GEMMs accumulate in fp32. Upstream enforces that with
 `torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False`, which has **no effect on
@@ -33,8 +36,9 @@ layers' `nn.Linear`s (and the fast path's compacted `SparseLinear`s) compute in 
 layers are unchanged. Bitwise equivalence was shown with upstream's strict gpucheck (0/10 → 10/10
 exact, dense and compacted) and with lockstep + replay on every neural run.
 
-**Not covered yet:** the Triton/CUDAGraph executor, a neural run of the Clang ELF, and the
-forced-token feed that would rescue `leading_noise`.
+**Executor caveat:** upstream's Triton executor runs the circuit IR, not the checkpoint weights, so
+an executor-only run is not neural inference and is labelled `circuit_executor_not_neural`. Only
+its verify mode (weights produce every token, executor cross-checked) is reported.
 
 ## Repository layout
 
@@ -52,6 +56,7 @@ forced-token feed that would rescue `leading_noise`.
 - **`scripts/run_calc_smoke.py`** — upstream `calc` baseline, with the ROCm adapter.
 - **`scripts/run_neural.py`** — runs one fixture through the model layers; prints a JSON record and appends it to `reports/runs.jsonl`.
 - **`scripts/rocm_exact.py`** — the ROCm fp32-accumulate adapter.
+- **`scripts/forced_feed.py`** — HANDOFF §8 controlled tool-call feed (`run_neural.py --force-call`).
 - **`scripts/gpucheck_compact.py`** — upstream strict bit-exact check on the compacted (fast-path) chip model.
 - **`scripts/diag_gpu_divergence.py`** — CPU-vs-GPU per-module diff used to find the ROCm divergence.
 - **`scripts/preflight.py`** — GPU/toolchain capability report.

@@ -21,6 +21,7 @@ from chipformer.rv import bridge as BR, elf, ref
 from chipformer.rv.chat import RvChat, replay
 
 import rocm_exact
+from forced_feed import ForcedRvChat
 from reference_rules import verify as oracle
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -59,11 +60,16 @@ def main() -> None:
     p.add_argument("--elf", default=str(ROOT / "build/ckb_bridge.elf"))
     p.add_argument("--case", default="valid_fee")
     p.add_argument("--slow", action="store_true")
-    p.add_argument("--executor", action="store_true", help="NVIDIA-oriented fast graph path; try only after baseline")
+    p.add_argument("--executor", action="store_true",
+                   help="upstream Triton executor: runs the circuit IR, NOT the checkpoint weights; not neural inference")
+    p.add_argument("--executor-verify", action="store_true",
+                   help="run the real-weights fast chip view AND the executor, comparing every token's residual")
     p.add_argument("--no-adapter", action="store_true", help="skip the ROCm exact-GEMM adapter (reproduces divergence)")
     p.add_argument("--max-new", type=int, default=600)
     p.add_argument("--max-chip", type=int, default=60000)
     p.add_argument("--no-check", action="store_true", help="Debug only: skip IR replay")
+    p.add_argument("--force-call", action="store_true",
+                   help="HANDOFF §8 controlled feed: force the exact tool-call text tokens (all layers still run)")
     p.add_argument("--manifest", default=str(ROOT / "reports/runs.jsonl"))
     a = p.parse_args()
     vectors = json.loads((ROOT / "fixtures/test_vectors.json").read_text())
@@ -72,7 +78,8 @@ def main() -> None:
         raise SystemExit(f"Unknown case {a.case}")
     assert oracle(v["payload"]) == v["expected"], "fixture disagrees with the independent oracle"
 
-    chat = RvChat(a.model, fast=not a.slow, executor=a.executor)
+    chat = (ForcedRvChat if a.force_call else RvChat)(a.model, fast=not a.slow,
+                                                         executor="verify" if a.executor_verify else a.executor)
     adapter = rocm_exact.needed() and not a.no_adapter
     if adapter:
         rocm_exact.install(rocm_exact.chip_modules(chat))
@@ -84,6 +91,11 @@ def main() -> None:
     BR.park(lock_m)
     lock = BR.Session(chat.T, lock_m)
     lock.history(ids)
+    call = None
+    if a.force_call:
+        call = chat.T.encode("<tool_call>\n<function=ckb_verify>\n<parameter=payload>\n" + v["payload"]
+                             + "\n</parameter>\n</function>\n</tool_call>")
+        chat.set_force(call)
     t0 = time.time()
     r = chat.generate(ids, m, max_new=a.max_new, max_chip=a.max_chip,
                       check_head=True, verbose=True, lock=lock)
@@ -99,11 +111,19 @@ def main() -> None:
     match = exercised and actual == v["expected"]
     trace_ok = r["lock_error"] is None and replay_ok is True
     # A matching output from a mis-transcribed payload is not a pass for this fixture.
-    status = ("TRACE_MISMATCH" if r["lock_error"] is not None
+    force_ok = None
+    if a.force_call:  # the model's own first token must open the forced call, and the feed must finish
+        force_ok = bool(r["tokens"][:1] == call[:1] and chat.force_done()
+                        and r["tokens"][: len(call)] == call)
+    verify_bad = r.get("verify_mismatch")
+    status = ("VERIFY_MISMATCH" if verify_bad else "FORCE_FAILED" if force_ok is False else "TRACE_MISMATCH" if r["lock_error"] is not None
               else "NOT_EXERCISED" if not exercised else "UNVERIFIED" if a.no_check
               else "INPUT_MISMATCH" if trace_ok and not payload_exact
               else "PASS" if match and trace_ok else "FAIL")
-    mode = "neural_executor" if a.executor else "neural_hf" if a.slow else "neural_hf_fast"
+    mode = ("neural_hf_fast+executor_verify" if a.executor_verify else "circuit_executor_not_neural"
+            if a.executor else "neural_hf" if a.slow else "neural_hf_fast")
+    if a.force_call:
+        mode += "+forced_call"
     props = torch.cuda.get_device_properties(0) if torch.cuda.is_available() else None
     out = {
         "mode": mode, "status": status, "case_id": v["id"],
@@ -116,6 +136,9 @@ def main() -> None:
         "elapsed_s": round(elapsed, 2), "lock_error": r["lock_error"], "replay_ok": replay_ok,
         "replay": replay_result, "tool_called": called,
         "sent_payload": sent, "payload_exact": payload_exact,
+        "forced_call": a.force_call, "force_ok": force_ok, "verify_mismatch": verify_bad,
+        "forced_tokens": getattr(chat, "forced", None),
+        "force_conflict": getattr(chat, "force_conflict", None),
         "head_mismatch": r["head_mismatch"], "generated": generated,
         "timestamp": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
     }
