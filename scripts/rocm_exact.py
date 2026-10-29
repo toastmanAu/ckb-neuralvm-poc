@@ -24,15 +24,42 @@ def _fp32_linear_forward(self: torch.nn.Linear, x: torch.Tensor) -> torch.Tensor
     return F.linear(x.float(), self.weight.float(), b).to(torch.bfloat16)
 
 
+def _lin32(x: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
+    if x.dtype != torch.bfloat16 or x.device.type != "cuda":
+        return F.linear(x, w)
+    return F.linear(x.float(), w.float()).to(torch.bfloat16)
+
+
+def _fp32_sparse_forward(self, x: torch.Tensor) -> torch.Tensor:
+    """upstream chipformer.q35.fast.SparseLinear.forward (ca13310) with each F.linear via _lin32."""
+    if self.dense is not None and x.numel() > self.dense_above * x.shape[-1]:
+        return _lin32(x, self.dense)
+    if self.r1 == self.r0 or self.c1 == self.c0:
+        return x.new_zeros(*x.shape[:-1], self.out_features)
+    y = _lin32(x[..., self.c0:self.c1], self.weight)
+    if self.r0 or self.r1 != self.out_features:
+        y = F.pad(y, (self.r0, self.out_features - self.r1))
+    return y
+
+
 def install(modules) -> int:
-    """Wrap every nn.Linear under ``modules`` (an iterable of modules); returns how many."""
+    """Wrap every nn.Linear and fast.SparseLinear (the fast path's compacted chip Linears) under
+    ``modules`` (an iterable of modules); returns how many. Call after fast.compact."""
+    from chipformer.q35.fast import SparseLinear
+
     n = 0
     for root in modules:
         for m in root.modules():
-            if isinstance(m, torch.nn.Linear) and not getattr(m, "_rocm_exact", False):
+            if getattr(m, "_rocm_exact", False):
+                continue
+            if isinstance(m, torch.nn.Linear):
                 m.forward = _fp32_linear_forward.__get__(m, torch.nn.Linear)
-                m._rocm_exact = True
-                n += 1
+            elif isinstance(m, SparseLinear):
+                m.forward = _fp32_sparse_forward.__get__(m, SparseLinear)
+            else:
+                continue
+            m._rocm_exact = True
+            n += 1
     return n
 
 
@@ -52,3 +79,11 @@ def patch_hf_build_model() -> None:
 
 def needed() -> bool:
     return torch.version.hip is not None
+
+
+def chip_modules(chat) -> list:
+    """RvChat's chip layers, plus the fast path's chip view (chat.cm: same layers + a zero layer)."""
+    mods = list(chat.lm.layers[: chat.n_chip])
+    if getattr(chat, "cm", None) is not None:
+        mods.append(chat.cm)
+    return mods

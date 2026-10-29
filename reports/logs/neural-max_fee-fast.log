@@ -1,0 +1,47 @@
+Loading weights:   0%|          | 0/580 [00:00<?, ?it/s]Loading weights: 100%|██████████| 580/580 [00:00<00:00, 19939.64it/s]
+[transformers] The tokenizer you are loading from '/data/qwenputer/qwenputer-rv' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+  500 tokens (62 text, 437 chip) 7s: F1(1) F0(1) J(87) F0(0) F0(1) F0(256) F0(0) J(100)
+  1000 tokens (62 text, 937 chip) 12s: NT F0(59) F0(59) J(79) NT NT NT NT
+  1500 tokens (62 text, 1437 chip) 16s: NT NT NT NT V(15174) V(158) V(0) SS0
+  2000 tokens (62 text, 1937 chip) 23s: NT F0(48) F0(48) J(79) NT NT NT NT
+  2500 tokens (62 text, 2437 chip) 27s: F0(10) F0(51) F0(306) F0(10) NT F0(10) F0(10) J(79)
+  3000 tokens (65 text, 2934 chip) 32s: F0(283) F0(0) F0(0) NT F0(48) F0(0) F0(32751) F0(0)
+  3500 tokens (78 text, 3421 chip) 37s: F1(32736) V(32767) F1(31) F0(12) F0(32767) NT V(32767) F1(31)
+{
+  "mode": "neural_hf_fast",
+  "status": "PASS",
+  "case_id": "max_fee",
+  "device": "Radeon RX 7900 XTX",
+  "backend": "hip 7.2.53211",
+  "torch": "2.14.1+rocm7.2",
+  "rocm_exact_adapter": true,
+  "model_rev": "2d9068508f2b680badb7abcded96fdd107e9ba5d",
+  "firmware_sha256": "05dff6da06e4b9b268d71fc474b5c7327af475e1cbebbd255d6291a9190c5631",
+  "elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ckb_bridge.elf",
+  "expected": "PASS;FEE=FFFFFFFFFFFFFFFE\n",
+  "actual": "PASS;FEE=FFFFFFFFFFFFFFFE\n",
+  "reference_match": true,
+  "chip_tokens": 3686,
+  "text_tokens": 111,
+  "elapsed_s": 45.54,
+  "lock_error": null,
+  "replay_ok": true,
+  "replay": {
+    "ok": true,
+    "positions": 4166,
+    "owned": 3723,
+    "wrong_predictions": 0,
+    "owner_mismatch": 0,
+    "runs": 1
+  },
+  "tool_called": true,
+  "sent_payload": "V1;I=FFFFFFFFFFFFFFFF;O=0000000000000001;L=10;W=10",
+  "payload_exact": true,
+  "head_mismatch": 0,
+  "generated": "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\nV1;I=FFFFFFFFFFFFFFFF;O=0000000000000001;L=10;W=10\n</parameter>\n</function>\n</tool_call>\n<tool_response>\nPASS;FEE=FFFFFFFFFFFFFFFE\n</tool_response>\n<think>\n\n</think>\n\nThe verification passed. The fee is FFFFFFFFFFFF.<|im_end|>",
+  "timestamp": "2026-10-30T01:11:10+10:30"
+}

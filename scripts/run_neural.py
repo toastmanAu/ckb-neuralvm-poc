@@ -75,7 +75,7 @@ def main() -> None:
     chat = RvChat(a.model, fast=not a.slow, executor=a.executor)
     adapter = rocm_exact.needed() and not a.no_adapter
     if adapter:
-        rocm_exact.install(chat.lm.layers[: chat.n_chip])
+        rocm_exact.install(rocm_exact.chip_modules(chat))
     m = ref.Machine.from_program(elf.program(a.elf))
     BR.park(m)
     prompt = "Call ckb_verify using precisely this payload, with no modifications: " + v["payload"]

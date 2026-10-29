@@ -1,6 +1,7 @@
 # CKB-NeuralVM PoC — experiment results
 
-**Status: PoC achieved (Gate 3) on AMD ROCm, slow HF path, with one documented arithmetic adapter.**
+**Status: PoC achieved (Gate 3) on AMD ROCm, on both the slow HF path and the fast (compacted +
+CUDA-graph) path, with one documented arithmetic adapter.**
 11 of 12 fixtures executed exactly on Qwenputer's neural RV32 CPU with lockstep and IR replay clean;
 the 12th (`leading_noise`) failed at Qwen's *text transcription* of the payload, not in execution.
 
@@ -45,6 +46,7 @@ was deliberately not used. `chipformer` is used via `PYTHONPATH`, not installed.
 | Upstream calc baseline on ROCm, with adapter (Gate 0) | **PASS** | `reports/logs/calc-slow-adapter.log`: `121932631112635269` (correct), 2430 chip tokens, lock error None, replay ok, 0 wrong of 2460 owned |
 | Actual neural CPU (Gate 2) | **PASS** | model chose `ckb_verify` unaided in 12/12 runs; no forced-token path needed |
 | 5+ model-layer cases exact (Gate 3) | **PASS 11/12** (all 5 required) | `reports/runs.jsonl`, `reports/logs/neural-*.log` |
+| Same, fast path (2026-10-30) | **PASS 11/12**, ~4.6× faster | `reports/runs.jsonl` (`neural_hf_fast`), `reports/logs/neural-*-fast.log` |
 
 ## ROCm blocker and fix (root cause, not workaround)
 
@@ -102,13 +104,51 @@ runner now checks the transcribed payload and labels this `INPUT_MISMATCH`.
 Replays: 0 wrong predictions and 0 owner mismatches on every run (~3.5–4.4k positions each). Each
 run is one tool call (`runs: 1`). Throughput on this path is ~18 chip tokens/s.
 
+## Fast path (mode `neural_hf_fast`, 2026-10-30)
+
+The default `RvChat(fast=True)` path builds a chip-only view whose Linears `fast.compact(qwen=False)`
+replaces with upstream `SparseLinear` (nonzero-block GEMMs) and runs one CUDA graph per token via
+`torch.compile(mode="reduce-overhead")`. Compaction happens inside `RvChat.__init__`, so the first
+adapter wrapped none of these modules: the fast path ran unprotected bf16 GEMMs on ROCm.
+
+**Fix.** `rocm_exact.install` now also wraps `SparseLinear` (same fp32-accumulate, round-once rule,
+applied to its block and dense-prefill products), and `rocm_exact.chip_modules(chat)` includes the
+fast path's chip view `chat.cm`.
+
+**Bitwise proof first** (`scripts/gpucheck_compact.py`: upstream's strict bf16 `hf.check` on the
+small chip model after `fast.compact(qwen=False)`, mirroring `_build_fast`):
+
+- old adapter (wraps only the 7 remaining `nn.Linear`s): signext/call, prefill and decode, **0/4 exact**;
+- new adapter (95 modules): signext/call/memcpy/rv32ui-lb/c-crc32, prefill and decode, **10/10 exact**
+  (up to 4166 positions).
+
+**Full model** (same GNU ELF, adapter on, default fast path; `torch.compile` + HIP graphs worked unchanged):
+
+| case | status | output | chip tokens | fast s | slow s |
+|---|---|---|---|---|---|
+| valid_fee | PASS | `PASS;FEE=000000003B9ACA00` | 3881 | 45.4 | 215.2 |
+| valid_exact | PASS | `PASS;FEE=0000000000000000` | 3839 | 43.0 | 216.0 |
+| lock_mismatch | PASS | `FAIL;R=LOCK` | 3558 | 41.2 | 202.4 |
+| capacity_fail | PASS | `FAIL;R=CAP` | 3510 | 46.7 | 201.4 |
+| max_u64 | PASS | `PASS;FEE=FFFFFFFFFFFFFFFF` | 3662 | 41.1 | 203.8 |
+| zero_fee_zero_cap | PASS | `PASS;FEE=0000000000000000` | 3839 | 46.6 | 215.7 |
+| bad_hex | PASS | `FAIL;R=FMT` | 3094 | 43.8 | 186.4 |
+| truncated | PASS | `FAIL;R=FMT` | 3306 | 50.8 | 204.5 |
+| trailing | PASS | `FAIL;R=FMT` | 3708 | 52.0 | 228.1 |
+| lowercase | PASS | `FAIL;R=FMT` | 3094 | 50.7 | 197.4 |
+| max_fee | PASS | `PASS;FEE=FFFFFFFFFFFFFFFE` | 3686 | 45.5 | 207.1 |
+| leading_noise | INPUT_MISMATCH | `PASS;FEE=0000000000000000` (leading space dropped again) | 3839 | 46.6 | 215.2 |
+
+Every run: lock error None, replay ok, 0 wrong predictions. Chip token counts equal the slow
+path's case for case. Elapsed includes the first-call graph capture.
+
+**Negative control.** `valid_fee --no-adapter` on the fast path: `TRACE_MISMATCH` at chip token 21,
+the same `F0(24012)` ≠ `F0(32716)` signature as the slow path.
+
 ## Not done / open
 
-- **Fast path (`fast=True`) and executor (`--executor`) not run.** `fast.compact` replaces the chip
-  `Linear`s with `SparseLinear` before the adapter can wrap them, so the fast path would run
-  unprotected bf16 GEMMs on ROCm. Next step: extend `rocm_exact` to `SparseLinear`, then prove it
-  with gpucheck + lockstep before trusting it. The executor path's Triton fp32 kernels and
-  `torch.cuda.CUDAGraph` on HIP are untested.
+- **Executor (`--executor`) not run.** Its Triton fp32 kernels and `torch.cuda.CUDAGraph` on HIP
+  are untested; the fast path above is now covered.
 - **`leading_noise`** needs the HANDOFF §8 controlled text-token feed (forced tokens still passing
   through every layer, owned by Qwen, before `</tool_call>`), or a fixture that avoids the
   tokenizer's whitespace merge. Not implemented.
@@ -135,6 +175,8 @@ cd $QW && export PYTHONPATH=$QW:$POC/scripts
 $PY $POC/scripts/run_upstream_reference.py --elf $POC/build/ckb_bridge.elf --tokenizer $M/tokenizer.json
 $PY $POC/scripts/run_calc_smoke.py $M --slow                       # Gate 0 baseline
 $PY $POC/scripts/run_neural.py --model $M --elf $POC/build/ckb_bridge.elf --case valid_fee --slow
+$PY $POC/scripts/gpucheck_compact.py --decode                    # fast-path bitwise proof
+$PY $POC/scripts/run_neural.py --model $M --elf $POC/build/ckb_bridge.elf --case valid_fee   # fast path
 ```
 
 `run_neural.py` prints one JSON object (`mode`, `device`, `model_rev`, `firmware_sha256`,

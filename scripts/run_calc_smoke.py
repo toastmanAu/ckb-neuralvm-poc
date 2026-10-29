@@ -20,7 +20,7 @@ def main() -> None:
     a = ap.parse_args()
     chat = RvChat(a.model, fast=not a.slow)
     if rocm_exact.needed() and not a.no_adapter:
-        n = rocm_exact.install(chat.lm.layers[: chat.n_chip])
+        n = rocm_exact.install(rocm_exact.chip_modules(chat))
         print(f"[rocm_exact] fp32-accumulate on {n} Linear modules in {chat.n_chip} chip layers")
     m = ref.Machine.from_program(elf.program(a.firmware))
     BR.park(m)

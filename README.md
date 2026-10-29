@@ -4,7 +4,8 @@ A toy CKB-*inspired* validation program, compiled to RV32IM, executed **inside t
 CPU layers** of [Qwenputer](https://github.com/divagr18/qwenputer) (Qwen3.5-4B-Qwenputer) and checked
 against an independent Python oracle and upstream's software reference machine.
 
-**Status (2026-10-29): Gate 3 reached on AMD ROCm (RX 7900 XTX), slow HF path.** 11 of 12 fixtures
+**Status (2026-10-30): Gate 3 reached on AMD ROCm (RX 7900 XTX), on both the slow HF path and the
+fast compacted path (~45 s per case instead of ~3.5 min).** 11 of 12 fixtures
 ran exactly on the neural chip layers, with live lockstep against `ref.Machine` and a full IR replay
 both clean. The 12th (`leading_noise`) failed because Qwen dropped a leading space when writing the
 tool call; the CPU executed what it was given correctly. Full write-up, evidence and rerun commands:
@@ -22,18 +23,18 @@ and makes no consensus, proof-of-execution or security claim.
 | Python oracle | 12/12 |
 | Upstream `ref.Machine` (GNU and Clang ELFs) | 12/12 each |
 | Upstream `calc` demo on ROCm | fails without adapter (lockstep divergence at chip token 15); passes with it |
-| Neural fixtures (`run_neural.py --slow`) | 11 PASS, 1 INPUT_MISMATCH; ~3.1–3.9k chip tokens and ~3.5 min each |
+| Neural fixtures, slow path (`--slow`) | 11 PASS, 1 INPUT_MISMATCH; ~3.1–3.9k chip tokens and ~3.5 min each |
+| Neural fixtures, fast path (default) | identical results and chip token counts; 41–52 s each |
 
 **ROCm finding.** The circuit is exact only if GEMMs accumulate in fp32. Upstream enforces that with
 `torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False`, which has **no effect on
 ROCm**, so bf16 GEMMs flip bits the circuit depends on. `scripts/rocm_exact.py` makes only the chip
-layers' `nn.Linear`s compute in fp32 and round once to bf16. Weights, the circuit and Qwen's text
+layers' `nn.Linear`s (and the fast path's compacted `SparseLinear`s) compute in fp32 and round once to bf16. Weights, the circuit and Qwen's text
 layers are unchanged. Bitwise equivalence was shown with upstream's strict gpucheck (0/10 → 10/10
-exact) and with lockstep + replay on every neural run.
+exact, dense and compacted) and with lockstep + replay on every neural run.
 
-**Not covered yet:** the fast path (`fast=True`, which swaps in `SparseLinear` before the adapter can
-wrap it), the Triton/CUDAGraph executor, a neural run of the Clang ELF, and the forced-token feed
-that would rescue `leading_noise`.
+**Not covered yet:** the Triton/CUDAGraph executor, a neural run of the Clang ELF, and the
+forced-token feed that would rescue `leading_noise`.
 
 ## Repository layout
 
@@ -51,6 +52,7 @@ that would rescue `leading_noise`.
 - **`scripts/run_calc_smoke.py`** — upstream `calc` baseline, with the ROCm adapter.
 - **`scripts/run_neural.py`** — runs one fixture through the model layers; prints a JSON record and appends it to `reports/runs.jsonl`.
 - **`scripts/rocm_exact.py`** — the ROCm fp32-accumulate adapter.
+- **`scripts/gpucheck_compact.py`** — upstream strict bit-exact check on the compacted (fast-path) chip model.
 - **`scripts/diag_gpu_divergence.py`** — CPU-vs-GPU per-module diff used to find the ROCm divergence.
 - **`scripts/preflight.py`** — GPU/toolchain capability report.
 - **`reports/`** — `RESULTS.md`, per-run manifests (`runs.jsonl`) and raw logs.
