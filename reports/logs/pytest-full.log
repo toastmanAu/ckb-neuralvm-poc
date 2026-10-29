@@ -1,0 +1,47 @@
+sssssss.s......sssssss.sss.............................................. [ 28%]
+............................................F.....s......s.............. [ 56%]
+.........................................s......s....................... [ 85%]
+......................................                                   [100%]
+=================================== FAILURES ===================================
+__________________________ test_fuzz_free_running_cpu __________________________
+
+circ = RvCore(target=Target(key_heads=16, value_heads=32, intermediate=9216))
+
+    def test_fuzz_free_running_cpu(circ):
+        progs = [assemble(fuzz.gen_program(2000 + s, block=30, iters=2)) for s in range(2)]
+>       res = fuzz.free_run(circ, progs, batch=2, device="cpu", compile_=False)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_rv_fuzz.py:33: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+chipformer/rv/fuzz.py:86: in free_run
+    fr = fastexec.FreeRun(c, batch, device, compile_, v2=v2)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+chipformer/rv/fastexec.py:269: in __init__
+    t0 = S.tok(nm) if nm in S.CONTROLS else S.tok(nm, 0)
+                                            ^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+name = 'Q', payload = 0
+
+    def tok(name: str, payload: int = 0) -> int:
+        if name in CONTROLS:
+            return CONTROLS[name]
+>       base, size = FAMILIES[name]
+                     ^^^^^^^^^^^^^^
+E       KeyError: 'Q'
+
+chipformer/rv/spec.py:111: KeyError
+=========================== short test summary info ============================
+FAILED tests/test_rv_fuzz.py::test_fuzz_free_running_cpu - KeyError: 'Q'
+SKIPPED [3] tests/test_rv_bridge.py:65: no Qwen3.5 tokenizer in the HF cache
+SKIPPED [1] tests/test_rv_bridge.py:78: no Qwen3.5 tokenizer in the HF cache
+SKIPPED [1] tests/test_rv_bridge.py:92: no Qwen3.5 tokenizer in the HF cache
+SKIPPED [1] tests/test_rv_bridge.py:107: no Qwen3.5 tokenizer in the HF cache
+SKIPPED [1] tests/test_rv_bridge.py:116: no Qwen3.5 tokenizer in the HF cache
+SKIPPED [1] tests/test_rv_bridge.py:145: no Qwen3.5 tokenizer in the HF cache
+SKIPPED [4] tests/test_rv_core.py:51: long trace (RV_SLOW=1)
+SKIPPED [6] tests/test_rv_core.py:49: checked free-running by the executor
+SKIPPED [4] tests/test_rv_ref.py:30: long run (RV_SLOW=1)
+1 failed, 231 passed, 22 skipped in 330.30s (0:05:30)
+exit 1

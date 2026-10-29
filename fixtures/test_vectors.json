@@ -1,0 +1,74 @@
+[
+  {
+    "id": "valid_fee",
+    "payload": "V1;I=00000002540BE400;O=0000000218711A00;L=2A;W=2A",
+    "expected": "PASS;FEE=000000003B9ACA00\n",
+    "purpose": "100 CKB in, 90 CKB out, toy tag matches"
+  },
+  {
+    "id": "valid_exact",
+    "payload": "V1;I=0000000000000001;O=0000000000000001;L=01;W=01",
+    "expected": "PASS;FEE=0000000000000000\n",
+    "purpose": "equal amounts, zero fee"
+  },
+  {
+    "id": "lock_mismatch",
+    "payload": "V1;I=00000002540BE400;O=0000000218711A00;L=2A;W=2B",
+    "expected": "FAIL;R=LOCK\n",
+    "purpose": "toy lock does not match witness"
+  },
+  {
+    "id": "capacity_fail",
+    "payload": "V1;I=0000000000000001;O=0000000000000002;L=AA;W=AA",
+    "expected": "FAIL;R=CAP\n",
+    "purpose": "output bigger than input"
+  },
+  {
+    "id": "max_u64",
+    "payload": "V1;I=FFFFFFFFFFFFFFFF;O=0000000000000000;L=FF;W=FF",
+    "expected": "PASS;FEE=FFFFFFFFFFFFFFFF\n",
+    "purpose": "upper boundary, no integer overflow"
+  },
+  {
+    "id": "zero_fee_zero_cap",
+    "payload": "V1;I=0000000000000000;O=0000000000000000;L=00;W=00",
+    "expected": "PASS;FEE=0000000000000000\n",
+    "purpose": "only toy semantics, not a consensus-valid cell"
+  },
+  {
+    "id": "bad_hex",
+    "payload": "V1;I=000000000000000G;O=0000000000000000;L=AB;W=AB",
+    "expected": "FAIL;R=FMT\n",
+    "purpose": "invalid hexadecimal"
+  },
+  {
+    "id": "truncated",
+    "payload": "V1;I=0000000000000001;O=0000000000000001;L=01",
+    "expected": "FAIL;R=FMT\n",
+    "purpose": "missing witness field"
+  },
+  {
+    "id": "trailing",
+    "payload": "V1;I=0000000000000001;O=0000000000000001;L=01;W=01;X=00",
+    "expected": "FAIL;R=FMT\n",
+    "purpose": "unknown extra field"
+  },
+  {
+    "id": "lowercase",
+    "payload": "V1;I=000000000000000a;O=0000000000000000;L=aa;W=aa",
+    "expected": "FAIL;R=FMT\n",
+    "purpose": "strict uppercase protocol"
+  },
+  {
+    "id": "max_fee",
+    "payload": "V1;I=FFFFFFFFFFFFFFFF;O=0000000000000001;L=10;W=10",
+    "expected": "PASS;FEE=FFFFFFFFFFFFFFFE\n",
+    "purpose": "near-max amount"
+  },
+  {
+    "id": "leading_noise",
+    "payload": " V1;I=0000000000000001;O=0000000000000001;L=01;W=01",
+    "expected": "FAIL;R=FMT\n",
+    "purpose": "leading whitespace malformed"
+  }
+]

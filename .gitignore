@@ -1,0 +1,18 @@
+# Generated and local-only data
+build/
+.venv/
+__pycache__/
+*.pyc
+*.safetensors
+models/
+qwenputer-rv/
+reports/*.json
+reports/elf-layout.txt
+
+# Local agent/session state and secrets — never publish
+.remember/
+.claude/
+.env
+.env.*
+*.pem
+*.key

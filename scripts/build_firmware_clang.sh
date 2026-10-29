@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Proven in the handoff authoring environment with clang 17.0.0 + lld; not runtime-tested.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CLANG="${RISCV_CLANG:-clang}"
+command -v "$CLANG" >/dev/null || { echo "Missing $CLANG" >&2; exit 2; }
+mkdir -p "$ROOT/build"
+"$CLANG" --target=riscv32-unknown-elf -march=rv32im_zba -mabi=ilp32 \
+  -O2 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
+  -fuse-ld=lld -Wl,--no-relax -Wl,-T,"$ROOT/guest/rom.ld" \
+  -o "$ROOT/build/ckb_bridge_clang.elf" \
+  "$ROOT/guest/start.S" "$ROOT/guest/ckb_bridge.c"
+file "$ROOT/build/ckb_bridge_clang.elf"
+readelf -h -lW "$ROOT/build/ckb_bridge_clang.elf"

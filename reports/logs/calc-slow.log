@@ -1,0 +1,16 @@
+Loading weights:   0%|          | 0/580 [00:00<?, ?it/s]Loading weights:  50%|████▉     | 288/580 [00:00<00:00, 2871.32it/s]Loading weights:  99%|█████████▉| 576/580 [00:00<00:00, 2785.16it/s]Loading weights: 100%|██████████| 580/580 [00:00<00:00, 2815.11it/s]
+[transformers] The tokenizer you are loading from '/data/qwenputer/qwenputer-rv' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+<tool_call>
+<function=calc>
+<parameter=expression>
+123456789 * 987654321
+</parameter>
+</function>
+</tool_call>
+[44 text + 15 chip tokens in 3.0s, head mismatches 0, lock error {'at': 59, 'got': 'F0(24012)', 'want': 'F0(32716)', 'recent': ['F1(1)', 'F0(0)', 'F0(1)', 'F0(254)', 'F0(81)', 'F0(10)', 'F0(10)', 'NT', 'V(17)', 'F1(1)', 'J(1384)', 'F0(24012)']}]
+{'ok': False, 'where': 464, 'got': [56780], 'want': [65484, 32768, 32768, 99638, 230316]}
+exit 0

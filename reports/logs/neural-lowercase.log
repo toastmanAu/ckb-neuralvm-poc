@@ -1,0 +1,44 @@
+Loading weights:   0%|          | 0/580 [00:00<?, ?it/s]Loading weights: 100%|██████████| 580/580 [00:00<00:00, 21007.92it/s]
+[transformers] The tokenizer you are loading from '/data/qwenputer/qwenputer-rv' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+  500 tokens (74 text, 425 chip) 29s: J(87) F0(62) F0(1) F0(256) F0(62) NT F0(62) F0(62)
+  1000 tokens (74 text, 925 chip) 57s: F1(1) J(74) F0(59) F0(59) NT V(288) F1(1) J(87)
+  1500 tokens (74 text, 1425 chip) 83s: J(100) V(528) F1(1) V(512) F1(1) J(74) F0(48) F0(48)
+  2000 tokens (74 text, 1925 chip) 109s: F0(0) F0(31) F0(286) F0(0) J(100) V(752) F1(1) V(736)
+  2500 tokens (74 text, 2425 chip) 135s: F0(44) V(945) F1(1) NT F0(97) F0(45) F0(300) F0(97)
+  3000 tokens (77 text, 2922 chip) 161s: F0(0) F0(0) F0(0) F0(0) F0(0) F0(273) F0(0) F0(0)
+{
+  "mode": "neural_hf",
+  "status": "PASS",
+  "case_id": "lowercase",
+  "device": "Radeon RX 7900 XTX",
+  "backend": "hip 7.2.53211",
+  "torch": "2.14.1+rocm7.2",
+  "rocm_exact_adapter": true,
+  "model_rev": "2d9068508f2b680badb7abcded96fdd107e9ba5d",
+  "firmware_sha256": "05dff6da06e4b9b268d71fc474b5c7327af475e1cbebbd255d6291a9190c5631",
+  "elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ckb_bridge.elf",
+  "expected": "FAIL;R=FMT\n",
+  "actual": "FAIL;R=FMT\n",
+  "reference_match": true,
+  "chip_tokens": 3094,
+  "text_tokens": 360,
+  "elapsed_s": 197.42,
+  "lock_error": null,
+  "replay_ok": true,
+  "replay": {
+    "ok": true,
+    "positions": 3835,
+    "owned": 3116,
+    "wrong_predictions": 0,
+    "owner_mismatch": 0,
+    "runs": 1
+  },
+  "tool_called": true,
+  "head_mismatch": 0,
+  "generated": "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\nV1;I=000000000000000a;O=0000000000000000;L=aa;W=aa\n</parameter>\n</function>\n</tool_call>\n<tool_response>\nFAIL;R=FMT\n</tool_response>\n<think>\n\n</think>\n\nThe verification failed with the error code `FMT` (Format Error). This indicates that the payload format is incorrect.\n\nHere is the breakdown of the payload provided:\n`V1;I=000000000000000a;O=0000000000000000;L=aa;W=aa`\n\nThe error `FMT` usually suggests a mismatch in the expected format of the input string. While the structure `V1;I=...;O=...;L=...;W=...` looks correct for a CKB-style verifier payload, the specific values or the way they are concatenated might not match the strict internal format expected by the tool (e.g., specific hex formatting, length constraints, or missing separators).\n\nHowever, since I am instructed to use the payload **exactly as provided** without modifications, I have executed the verification with the string:\n`V1;I=000000000000000a;O=0000000000000000;L=aa;W=aa`\n\nThe result of this specific execution is a failure.<|im_end|>",
+  "timestamp": "2026-10-29T19:22:45+10:30"
+}
