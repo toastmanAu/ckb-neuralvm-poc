@@ -1,0 +1,56 @@
+Loading weights:   0%|          | 0/580 [00:00<?, ?it/s]Loading weights: 100%|██████████| 580/580 [00:00<00:00, 21510.77it/s]
+[transformers] The tokenizer you are loading from '/data/qwenputer/qwenputer-rv' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+  500 tokens (28 text, 471 chip) 6s: F0(0) F0(1) F0(256) F0(0) J(75) V(176) F1(1) V(160)
+  1000 tokens (28 text, 971 chip) 10s: J(112) F0(258) F0(0) V(12886) V(0) V(0) SS0 F0(0)
+  1500 tokens (31 text, 1468 chip) 15s: NT F0(32736) F0(224) F0(0) F0(1) J(776) NT V(0)
+  2000 tokens (31 text, 1968 chip) 20s: F0(2) J(938) NT NT F0(8) F0(16) F0(23) V(111)
+  2500 tokens (31 text, 2468 chip) 24s: F0(2) NT F0(2) F0(2) NT F0(1) F0(32) F0(1)
+  3000 tokens (68 text, 2931 chip) 30s: '`.' ' This' ' indicates' ' a' ' capacity' '-related' ' issue' '.'
+{
+  "mode": "neural_hf_fast",
+  "status": "PASS",
+  "case_id": "ctx_capacity_fail",
+  "device": "Radeon RX 7900 XTX",
+  "backend": "hip 7.2.53211",
+  "torch": "2.14.1+rocm7.2",
+  "rocm_exact_adapter": true,
+  "model_rev": "2d9068508f2b680badb7abcded96fdd107e9ba5d",
+  "firmware_sha256": "c52198681baf5b15835ead9e886f557aaba85e696e9d36f243ec2b13663788e5",
+  "elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ctx/ckb_bridge-ctx_capacity_fail.elf",
+  "fixture_set": "v0.2_ctx",
+  "base_elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ckb_bridge.elf",
+  "base_elf_sha256": "2a19a0b6a4f379d5611efc1f97bdc6ff3df66a65d8c3d074fb0ed7b79f2116c5",
+  "code_sha256": "2110a697a6afa86ea5e43f8082fde923d7b7e64b2b246ae96676f4772b5d5030",
+  "ctx_sha256": "422b691e1b36f411198d8e67e3b284808fae777e165f3abf0c1a70f2e5d2660e",
+  "expected": "FAIL;R=CAP\n",
+  "actual": "FAIL;R=CAP\n",
+  "reference_match": true,
+  "chip_tokens": 2931,
+  "text_tokens": 69,
+  "elapsed_s": 33.72,
+  "lock_error": null,
+  "replay_ok": true,
+  "replay": {
+    "ok": true,
+    "positions": 3342,
+    "owned": 2953,
+    "wrong_predictions": 0,
+    "owner_mismatch": 0,
+    "runs": 1
+  },
+  "tool_called": true,
+  "sent_payload": "V2",
+  "payload_exact": true,
+  "forced_call": false,
+  "force_ok": null,
+  "verify_mismatch": null,
+  "forced_tokens": null,
+  "force_conflict": null,
+  "head_mismatch": 0,
+  "generated": "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\nV2\n</parameter>\n</function>\n</tool_call>\n<tool_response>\nFAIL;R=CAP\n</tool_response>\n<think>\n\n</think>\n\nThe verification failed with the reason: `R=CAP`. This indicates a capacity-related issue.<|im_end|>",
+  "timestamp": "2026-10-30T16:32:19+10:30"
+}

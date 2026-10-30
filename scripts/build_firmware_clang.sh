@@ -9,6 +9,6 @@ mkdir -p "$ROOT/build"
   -O2 -ffreestanding -fno-builtin -fno-stack-protector -nostdlib \
   -fuse-ld=lld -Wl,--no-relax -Wl,-T,"$ROOT/guest/rom.ld" \
   -o "$ROOT/build/ckb_bridge_clang.elf" \
-  "$ROOT/guest/start.S" "$ROOT/guest/ckb_bridge.c"
+  "$ROOT/guest/start.S" "$ROOT/guest/bridge.c" "$ROOT/guest/contract.c" "$ROOT/guest/ctx.c" "$ROOT/guest/emit.c" "$ROOT/guest/parse.c"
 file "$ROOT/build/ckb_bridge_clang.elf"
 readelf -h -lW "$ROOT/build/ckb_bridge_clang.elf"

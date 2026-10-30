@@ -1,0 +1,60 @@
+Loading weights:   0%|          | 0/580 [00:00<?, ?it/s]Loading weights: 100%|██████████| 580/580 [00:00<00:00, 19751.84it/s]
+[transformers] The tokenizer you are loading from '/data/qwenputer/qwenputer-rv' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+  500 tokens (28 text, 471 chip) 6s: F0(0) F0(1) F0(256) F0(0) J(75) V(176) F1(1) V(160)
+  1000 tokens (28 text, 971 chip) 10s: J(112) F0(258) F0(0) V(12886) V(0) V(0) SS0 F0(0)
+  1500 tokens (31 text, 1468 chip) 15s: NT F0(32767) F0(255) F0(0) F0(1) J(776) NT V(0)
+  2000 tokens (31 text, 1968 chip) 20s: F0(0) F0(1) J(844) NT V(0) F1(4) V(112) F1(4)
+  2500 tokens (31 text, 2468 chip) 25s: F1(0) V(32616) F1(0) ST0 ST0 ST0 ST0 V(1224)
+  3000 tokens (31 text, 2968 chip) 29s: V(32656) F1(0) V(32620) F1(0) V(5344) F1(8) J(832) V(32576)
+  3500 tokens (31 text, 3468 chip) 34s: F0(12) NT J(588) F0(4) J(319) V(32616) F1(0) V(32620)
+  4000 tokens (31 text, 3968 chip) 39s: V(180) F1(4) V(32620) F1(0) F0(118) V(32617) F1(0) V(181)
+  4500 tokens (31 text, 4468 chip) 43s: F0(75) F0(75) F0(75) NT F0(88) F0(88) F0(88) NT
+  5000 tokens (40 text, 4959 chip) 48s: V(6024) F1(8) J(999) NT V(32576) F1(0) ST1 V(0)
+{
+  "mode": "neural_hf_fast",
+  "status": "PASS",
+  "case_id": "long_lock_match",
+  "device": "Radeon RX 7900 XTX",
+  "backend": "hip 7.2.53211",
+  "torch": "2.14.1+rocm7.2",
+  "rocm_exact_adapter": true,
+  "model_rev": "2d9068508f2b680badb7abcded96fdd107e9ba5d",
+  "firmware_sha256": "157b1410dc1fef98b421840fbc41cd923fc272f5245cd6ab443608151b85a0c4",
+  "elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ctx/ckb_bridge-long_lock_match.elf",
+  "fixture_set": "v0.2_ctx",
+  "base_elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ckb_bridge.elf",
+  "base_elf_sha256": "2a19a0b6a4f379d5611efc1f97bdc6ff3df66a65d8c3d074fb0ed7b79f2116c5",
+  "code_sha256": "2110a697a6afa86ea5e43f8082fde923d7b7e64b2b246ae96676f4772b5d5030",
+  "ctx_sha256": "280a7acfa23d6b3662c6c2942951f853404a61bb368649f096ccba466c63ea44",
+  "expected": "PASS;FEE=0000000000000004\n",
+  "actual": "PASS;FEE=0000000000000004\n",
+  "reference_match": true,
+  "chip_tokens": 5378,
+  "text_tokens": 90,
+  "elapsed_s": 56.22,
+  "lock_error": null,
+  "replay_ok": true,
+  "replay": {
+    "ok": true,
+    "positions": 5810,
+    "owned": 5415,
+    "wrong_predictions": 0,
+    "owner_mismatch": 0,
+    "runs": 1
+  },
+  "tool_called": true,
+  "sent_payload": "V2",
+  "payload_exact": true,
+  "forced_call": false,
+  "force_ok": null,
+  "verify_mismatch": null,
+  "forced_tokens": null,
+  "force_conflict": null,
+  "head_mismatch": 0,
+  "generated": "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\nV2\n</parameter>\n</function>\n</tool_call>\n<tool_response>\nPASS;FEE=0000000000000004\n</tool_response>\n<think>\n\n</think>\n\nThe verification passed with a fee of 0000000000000004.<|im_end|>",
+  "timestamp": "2026-10-30T16:00:46+10:30"
+}

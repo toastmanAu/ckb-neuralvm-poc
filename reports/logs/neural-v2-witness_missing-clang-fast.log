@@ -1,0 +1,52 @@
+Loading weights:   0%|          | 0/580 [00:00<?, ?it/s]Loading weights: 100%|██████████| 580/580 [00:00<00:00, 22105.17it/s]
+[transformers] The tokenizer you are loading from '/data/qwenputer/qwenputer-rv' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+  500 tokens (28 text, 471 chip) 6s: J(120) F0(35) F0(0) F0(1) F0(12) V(180) F1(1) NT
+  1000 tokens (31 text, 968 chip) 11s: J(204) F0(2) NT V(0) F1(4) V(90) F1(4) V(4928)
+{
+  "mode": "neural_hf_fast",
+  "status": "PASS",
+  "case_id": "witness_missing",
+  "device": "Radeon RX 7900 XTX",
+  "backend": "hip 7.2.53211",
+  "torch": "2.14.1+rocm7.2",
+  "rocm_exact_adapter": true,
+  "model_rev": "2d9068508f2b680badb7abcded96fdd107e9ba5d",
+  "firmware_sha256": "770e5bf6b2eb038fc7af38018ab59712f090516342a56f23542345ce59613ebb",
+  "elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ctx/ckb_bridge_clang-witness_missing.elf",
+  "fixture_set": "v0.2_ctx",
+  "base_elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ckb_bridge_clang.elf",
+  "base_elf_sha256": "4cec66eaa22e6a45c8b25ece04f74b016feb30c04571a769d317a3b3d3c22306",
+  "code_sha256": "e986c5e34edec88dd678569466ab26fcd61f6283e24c7e6a2636bb8a004bc4ee",
+  "ctx_sha256": "32ef55b571f2462a6ce86b3cbe086b11db30585dc78e900f7ac2afee6c0b1984",
+  "expected": "FAIL;R=NOWIT\n",
+  "actual": "FAIL;R=NOWIT\n",
+  "reference_match": true,
+  "chip_tokens": 1220,
+  "text_tokens": 63,
+  "elapsed_s": 17.73,
+  "lock_error": null,
+  "replay_ok": true,
+  "replay": {
+    "ok": true,
+    "positions": 1625,
+    "owned": 1244,
+    "wrong_predictions": 0,
+    "owner_mismatch": 0,
+    "runs": 1
+  },
+  "tool_called": true,
+  "sent_payload": "V2",
+  "payload_exact": true,
+  "forced_call": false,
+  "force_ok": null,
+  "verify_mismatch": null,
+  "forced_tokens": null,
+  "force_conflict": null,
+  "head_mismatch": 0,
+  "generated": "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\nV2\n</parameter>\n</function>\n</tool_call>\n<tool_response>\nFAIL;R=NOWIT\n</tool_response>\n<think>\n\n</think>\n\nThe verification failed with the reason \"NOWI T\".<|im_end|>",
+  "timestamp": "2026-10-30T16:13:40+10:30"
+}

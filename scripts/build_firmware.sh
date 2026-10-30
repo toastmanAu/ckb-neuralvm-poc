@@ -14,7 +14,7 @@ for f in "$UPSTREAM/rom.ld" "$UPSTREAM/crt0.S"; do test -f "$f" || { echo "Missi
   -fno-stack-protector -fno-pic -fno-pie -nostdlib -nostartfiles -static \
   -Wl,--no-relax -Wl,-Map,"$ROOT/build/ckb_bridge.map" \
   -T"$UPSTREAM/rom.ld" -o "$ROOT/build/ckb_bridge.elf" \
-  "$UPSTREAM/crt0.S" "$ROOT/guest/ckb_bridge.c" -lgcc
+  "$UPSTREAM/crt0.S" "$ROOT/guest/bridge.c" "$ROOT/guest/contract.c" "$ROOT/guest/ctx.c" "$ROOT/guest/emit.c" "$ROOT/guest/parse.c" -lgcc
 "$READELF" -h -lW "$ROOT/build/ckb_bridge.elf" | tee "$ROOT/reports/elf-layout.txt"
 "$GCC" -dumpmachine
 printf 'Built %s\n' "$ROOT/build/ckb_bridge.elf"

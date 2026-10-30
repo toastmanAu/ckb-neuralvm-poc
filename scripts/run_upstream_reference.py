@@ -9,6 +9,10 @@ import json
 import pathlib
 from chipformer.rv import bridge as BR, elf, ref
 
+import ctx_v2
+import reference_rules
+import reference_v2
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 def run_one(tok, elf_path, payload, max_records):
@@ -34,16 +38,27 @@ def main():
     p.add_argument("--max-records", type=int, default=200000)
     a = p.parse_args()
     text = BR.Text(a.tokenizer)
-    vectors = json.loads((ROOT / "fixtures/test_vectors.json").read_text())
-    errors = []
-    for v in vectors:
-        try:
-            actual, _ = run_one(text, a.elf, v["payload"], a.max_records)
-            ok = actual == v["expected"]
-        except Exception as exc:
-            ok, actual = False, f"error {exc!r}"
-        print("PASS" if ok else "FAIL", v["id"], repr(actual))
-        if not ok: errors.append(v["id"])
+    v1 = json.loads((ROOT / "fixtures/test_vectors.json").read_text())
+    v2 = json.loads((ROOT / "fixtures/ctx_vectors.json").read_text())
+    ctx_dir = ROOT / "build/ctx"
+    errors, code_shas = [], set()
+    for tag, vectors in (("v1", v1), ("v2", v2)):
+        for v in vectors:
+            # each v0.2 fixture runs its own ELF: the base build with the fixture's context injected
+            path = ctx_v2.case_elf(a.elf, v, ctx_dir) if tag == "v2" else pathlib.Path(a.elf)
+            if tag == "v2":
+                code_shas.add(ctx_v2.code_sha256(path))
+            oracle = reference_v2.verify(v) if tag == "v2" else reference_rules.verify(v["payload"])
+            try:
+                actual, _ = run_one(text, path, v["payload"], a.max_records)
+                ok = actual == v["expected"] == oracle
+            except Exception as exc:
+                ok, actual = False, f"error {exc!r}"
+            print("PASS" if ok else "FAIL", tag, v["id"], repr(actual))
+            if not ok: errors.append(f"{tag}:{v['id']}")
+    if len(code_shas) != 1:
+        errors.append(f"context injection changed code bytes: {sorted(code_shas)}")
     if errors: raise SystemExit("Reference emulator failures: " + ", ".join(errors))
-    print(f"All {len(vectors)} firmware/reference checks passed (software-only, not neural).")
+    print(f"All {len(v1)} v0.1 + {len(v2)} v0.2 firmware/reference checks passed "
+          f"(software-only, not neural); code sha256 (context zeroed) {code_shas.pop()}")
 if __name__ == "__main__": main()

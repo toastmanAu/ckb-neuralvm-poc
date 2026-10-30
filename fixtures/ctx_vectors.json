@@ -1,0 +1,353 @@
+[
+  {
+    "id": "two_in_two_out",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "00000002540BE400",
+        "000000012A05F200"
+      ],
+      "outputs": [
+        "00000002CB417800",
+        "000000009502F900"
+      ],
+      "args": "2A",
+      "witness": "2A"
+    },
+    "purpose": "2 inputs, 2 outputs, fee 5 CKB",
+    "expected": "PASS;FEE=000000001DCD6500\n"
+  },
+  {
+    "id": "one_in_one_out",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "00000002540BE400"
+      ],
+      "outputs": [
+        "0000000218711A00"
+      ],
+      "args": "2A",
+      "witness": "2A"
+    },
+    "purpose": "v0.1 valid_fee as a context",
+    "expected": "PASS;FEE=000000003B9ACA00\n"
+  },
+  {
+    "id": "ctx_lock_mismatch",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "00000002540BE400"
+      ],
+      "outputs": [
+        "0000000218711A00"
+      ],
+      "args": "2A",
+      "witness": "2B"
+    },
+    "purpose": "toy tag differs",
+    "expected": "FAIL;R=LOCK\n"
+  },
+  {
+    "id": "witness_missing",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "00000002540BE400"
+      ],
+      "outputs": [
+        "0000000218711A00"
+      ],
+      "args": "2A",
+      "witness": null
+    },
+    "purpose": "loader returns ITEM_MISSING",
+    "expected": "FAIL;R=NOWIT\n"
+  },
+  {
+    "id": "lock_len_mismatch",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "00000002540BE400"
+      ],
+      "outputs": [
+        "0000000218711A00"
+      ],
+      "args": "2A2A",
+      "witness": "2A"
+    },
+    "purpose": "args longer than witness",
+    "expected": "FAIL;R=LOCK\n"
+  },
+  {
+    "id": "long_lock_match",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "0000000000000007"
+      ],
+      "outputs": [
+        "0000000000000003"
+      ],
+      "args": "00112233445566778899AABBCCDDEEFF0123456789ABCDEFFEDCBA9876543210",
+      "witness": "00112233445566778899AABBCCDDEEFF0123456789ABCDEFFEDCBA9876543210"
+    },
+    "purpose": "32-byte args == witness, 8 partial loads",
+    "expected": "PASS;FEE=0000000000000004\n"
+  },
+  {
+    "id": "long_lock_last_byte",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "0000000000000007"
+      ],
+      "outputs": [
+        "0000000000000003"
+      ],
+      "args": "00112233445566778899AABBCCDDEEFF0123456789ABCDEFFEDCBA9876543210",
+      "witness": "00112233445566778899AABBCCDDEEFF0123456789ABCDEFFEDCBA9876543211"
+    },
+    "purpose": "differs only in byte 31 (last chunk)",
+    "expected": "FAIL;R=LOCK\n"
+  },
+  {
+    "id": "input_sum_overflow",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "FFFFFFFFFFFFFFFF",
+        "0000000000000001"
+      ],
+      "outputs": [
+        "0000000000000000"
+      ],
+      "args": "2A",
+      "witness": "2A"
+    },
+    "purpose": "inputs sum past UINT64_MAX",
+    "expected": "FAIL;R=OVF\n"
+  },
+  {
+    "id": "output_sum_overflow",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "FFFFFFFFFFFFFFFF"
+      ],
+      "outputs": [
+        "FFFFFFFFFFFFFFFF",
+        "0000000000000001"
+      ],
+      "args": "2A",
+      "witness": "2A"
+    },
+    "purpose": "outputs sum past UINT64_MAX",
+    "expected": "FAIL;R=OVF\n"
+  },
+  {
+    "id": "max_sum_exact",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "FFFFFFFFFFFFFFFE",
+        "0000000000000001"
+      ],
+      "outputs": [
+        "FFFFFFFFFFFFFFFF"
+      ],
+      "args": "2A",
+      "witness": "2A"
+    },
+    "purpose": "sums reach UINT64_MAX exactly, no overflow",
+    "expected": "PASS;FEE=0000000000000000\n"
+  },
+  {
+    "id": "ctx_capacity_fail",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "000000012A05F200",
+        "000000012A05F200"
+      ],
+      "outputs": [
+        "0000000165A0BC00",
+        "00000000F4610900"
+      ],
+      "args": "2A",
+      "witness": "2A"
+    },
+    "purpose": "outputs exceed inputs by 1 CKB",
+    "expected": "FAIL;R=CAP\n"
+  },
+  {
+    "id": "no_inputs",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [],
+      "outputs": [
+        "0000000000000001"
+      ],
+      "args": "2A",
+      "witness": "2A"
+    },
+    "purpose": "first input load is INDEX_OUT_OF_BOUND",
+    "expected": "FAIL;R=NOIN\n"
+  },
+  {
+    "id": "no_outputs",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "000000001DCD6500"
+      ],
+      "outputs": [],
+      "args": "2A",
+      "witness": "2A"
+    },
+    "purpose": "no outputs: whole input is fee",
+    "expected": "PASS;FEE=000000001DCD6500\n"
+  },
+  {
+    "id": "empty_lock",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "0000000000000002"
+      ],
+      "outputs": [
+        "0000000000000001"
+      ],
+      "args": "",
+      "witness": ""
+    },
+    "purpose": "zero-length args and witness (toy semantics)",
+    "expected": "PASS;FEE=0000000000000001\n"
+  },
+  {
+    "id": "bad_magic",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "0000000000000002"
+      ],
+      "outputs": [
+        "0000000000000001"
+      ],
+      "args": "2A",
+      "witness": "2A",
+      "magic": "CKX0"
+    },
+    "purpose": "context magic wrong",
+    "expected": "FAIL;R=CTX\n"
+  },
+  {
+    "id": "bad_count",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "0000000000000002",
+        "0000000000000001"
+      ],
+      "outputs": [
+        "0000000000000001"
+      ],
+      "args": "2A",
+      "witness": "2A",
+      "n_inputs": 3
+    },
+    "purpose": "n_inputs 3 > toy maximum 2",
+    "expected": "FAIL;R=CTX\n"
+  },
+  {
+    "id": "bad_args_len",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "00000002540BE400"
+      ],
+      "outputs": [
+        "0000000218711A00"
+      ],
+      "args": "2A",
+      "witness": "2A",
+      "args_len": 255
+    },
+    "purpose": "args_len header 255 > 32: would read past the 128-byte context",
+    "expected": "FAIL;R=CTX\n"
+  },
+  {
+    "id": "bad_witness_len",
+    "payload": "V2",
+    "ctx": {
+      "inputs": [
+        "00000002540BE400"
+      ],
+      "outputs": [
+        "0000000218711A00"
+      ],
+      "args": "2A",
+      "witness": "2A",
+      "witness_len": 33
+    },
+    "purpose": "witness_len header 33 > 32 (and not 0xFF)",
+    "expected": "FAIL;R=CTX\n"
+  },
+  {
+    "id": "unpatched",
+    "payload": "V2",
+    "ctx": null,
+    "purpose": "base ELF, no context injected",
+    "expected": "FAIL;R=CTX\n"
+  },
+  {
+    "id": "probe_long",
+    "payload": "V2;T",
+    "ctx": {
+      "inputs": [
+        "00000002540BE400",
+        "000000012A05F200"
+      ],
+      "outputs": [
+        "00000002CB417800"
+      ],
+      "args": "00112233445566778899AABBCCDDEEFF0123456789ABCDEFFEDCBA9876543210",
+      "witness": "0011223344"
+    },
+    "purpose": "API probe: partial reads, clamped offsets, OOB indices",
+    "expected": "T;0,20,;0,20,00112233;0,02,3210;0,00,;0,05,;0,04,11223344;1,04,;0,00000002540BE400;0,000000012A05F200;1;1;0,00000002CB417800;1\n"
+  },
+  {
+    "id": "probe_missing",
+    "payload": "V2;T",
+    "ctx": {
+      "inputs": [
+        "0000000000000001"
+      ],
+      "outputs": [],
+      "args": "",
+      "witness": null
+    },
+    "purpose": "API probe: empty args, missing witness, empty outputs",
+    "expected": "T;0,00,;0,00,;0,00,;0,00,;2,00,;2,04,;1,04,;0,0000000000000001;1;1;1;1;1\n"
+  },
+  {
+    "id": "probe_bad_ctx",
+    "payload": "V2;T",
+    "ctx": {
+      "inputs": [
+        "0000000000000001"
+      ],
+      "outputs": [
+        "0000000000000001"
+      ],
+      "args": "2A",
+      "witness": "2A",
+      "magic": "XXXX"
+    },
+    "purpose": "API probe on an invalid context: every load ITEM_MISSING",
+    "expected": "T;2,00,;2,04,;2,04,;2,04,;2,00,;2,04,;2,04,;2;2;2;2;2;2\n"
+  }
+]

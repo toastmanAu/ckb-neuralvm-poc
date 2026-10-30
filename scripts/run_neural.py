@@ -17,9 +17,11 @@ import time
 
 import torch
 
-from chipformer.rv import bridge as BR, elf, ref
+from chipformer.rv import bridge as BR, elf, ref, spec as S
 from chipformer.rv.chat import RvChat, replay
 
+import ctx_v2
+import reference_v2
 import rocm_exact
 from forced_feed import ForcedRvChat
 from reference_rules import verify as oracle
@@ -30,9 +32,22 @@ CKB_TOOL = {"type": "function", "function": {
     "name": "ckb_verify",
     "description": "Run a toy CKB-style capacity/lock-tag verifier. It is NOT a valid CKB transaction verification. Use payload exactly as provided without changes.",
     "parameters": {"type": "object", "properties": {
-        "payload": {"type": "string", "description": "Exact V1;I=...;O=...;L=...;W=... payload"}},
+        "payload": {"type": "string", "description": "Exact payload as provided (V1;I=...;O=...;L=...;W=... or V2)"}},
         "required": ["payload"]}}}
 START, END = "<tool_response>\n", "</tool_response>"
+CALL_HEAD, CALL_TAIL = "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\n", "\n</parameter>\n</function>\n</tool_call>"
+
+
+def capture_check(T, payload: str) -> str | None:
+    """Why upstream's capture would not hold this call intact, or None. Every token between
+    <tool_call> and </tool_call> takes one 16-byte row, rows 1..CAP_MAX; later tokens overwrite
+    row CAP_MAX and a longer token is cut to 16 bytes, both silently."""
+    ids = T.encode(CALL_HEAD + payload + CALL_TAIL)
+    body = ids[ids.index(T.TCO) + 1: ids.index(T.TCC)]
+    if len(body) > S.CAP_MAX:
+        return f"{len(body)} captured tokens > CAP_MAX {S.CAP_MAX}"
+    long = [T.decode_bytes([q]) for q in body if len(T.decode_bytes([q])) > S.TEXT_ROW]
+    return f"tokens longer than {S.TEXT_ROW} bytes: {long}" if long else None
 
 
 def sha256(path) -> str:
@@ -72,11 +87,27 @@ def main() -> None:
                    help="HANDOFF §8 controlled feed: force the exact tool-call text tokens (all layers still run)")
     p.add_argument("--manifest", default=str(ROOT / "reports/runs.jsonl"))
     a = p.parse_args()
-    vectors = json.loads((ROOT / "fixtures/test_vectors.json").read_text())
-    v = next((x for x in vectors if x["id"] == a.case), None)
+    v1 = json.loads((ROOT / "fixtures/test_vectors.json").read_text())
+    v2 = json.loads((ROOT / "fixtures/ctx_vectors.json").read_text())
+    ids = [x["id"] for x in v1 + v2]
+    assert len(ids) == len(set(ids)), "fixture ids must be unique across v0.1 and v0.2"
+    v = next((x for x in v1 + v2 if x["id"] == a.case), None)
     if v is None:
         raise SystemExit(f"Unknown case {a.case}")
-    assert oracle(v["payload"]) == v["expected"], "fixture disagrees with the independent oracle"
+    is_v2 = v in v2
+    want = reference_v2.verify(v) if is_v2 else oracle(v["payload"])
+    assert want == v["expected"], "fixture disagrees with the independent oracle"
+    base_elf = a.elf
+    if is_v2:  # the base build with this fixture's context injected; every consumer loads this ELF
+        a.elf = str(ctx_v2.case_elf(base_elf, v, ROOT / "build/ctx"))
+    blocked = capture_check(BR.Text(pathlib.Path(a.model) / "tokenizer.json"), v["payload"])
+    if blocked:
+        out = {"status": "BRIDGE_BLOCKED", "case_id": v["id"], "reason": blocked,
+               "timestamp": datetime.datetime.now().astimezone().isoformat(timespec="seconds")}
+        print(json.dumps(out, indent=2))
+        with open(a.manifest, "a") as f:
+            f.write(json.dumps(out) + "\n")
+        raise SystemExit(1)
 
     chat = (ForcedRvChat if a.force_call else RvChat)(a.model, fast=not a.slow,
                                                          executor="verify" if a.executor_verify else a.executor)
@@ -93,8 +124,7 @@ def main() -> None:
     lock.history(ids)
     call = None
     if a.force_call:
-        call = chat.T.encode("<tool_call>\n<function=ckb_verify>\n<parameter=payload>\n" + v["payload"]
-                             + "\n</parameter>\n</function>\n</tool_call>")
+        call = chat.T.encode(CALL_HEAD + v["payload"] + CALL_TAIL)
         chat.set_force(call)
     t0 = time.time()
     r = chat.generate(ids, m, max_new=a.max_new, max_chip=a.max_chip,
@@ -131,6 +161,10 @@ def main() -> None:
         "backend": f"hip {torch.version.hip}" if torch.version.hip else f"cuda {torch.version.cuda}",
         "torch": torch.__version__, "rocm_exact_adapter": adapter,
         "model_rev": MODEL_REV, "firmware_sha256": sha256(a.elf), "elf": a.elf,
+        "fixture_set": "v0.2_ctx" if is_v2 else "v0.1",
+        "base_elf": base_elf, "base_elf_sha256": sha256(base_elf),
+        "code_sha256": ctx_v2.code_sha256(a.elf) if is_v2 else None,
+        "ctx_sha256": (hashlib.sha256(ctx_v2.encode(v["ctx"])).hexdigest() if is_v2 and v["ctx"] else None),
         "expected": v["expected"], "actual": actual,
         "reference_match": match, "chip_tokens": r["chip_tokens"], "text_tokens": r["text_tokens"],
         "elapsed_s": round(elapsed, 2), "lock_error": r["lock_error"], "replay_ok": replay_ok,

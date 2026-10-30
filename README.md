@@ -8,8 +8,13 @@ against an independent Python oracle and upstream's software reference machine.
 fast compacted path (~45 s per case instead of ~3.5 min), with both the GNU and Clang ELFs.** All
 12 fixtures run exactly on the neural chip layers, with live lockstep against `ref.Machine` and a
 full IR replay both clean: 11 unaided, and `leading_noise` (where Qwen drops a leading space when
-writing the tool call) via the HANDOFF §8 controlled token feed. Full write-up, evidence and rerun commands:
-**[`reports/RESULTS.md`](reports/RESULTS.md)**.
+writing the tool call) via the HANDOFF §8 controlled token feed.
+
+**v0.2 (HANDOFF §10):** the firmware now also reads a small **host-injected transaction
+context** (2 inputs, 2 outputs, script args, witness) through a toy loader API whose partial-load
+rules and return codes follow ckb-script's `store_data`. All 22 context fixtures run exactly on the
+neural layers, covering overflow, missing witness, out-of-range indices and partial reads. Full
+write-up, evidence and rerun commands: **[`reports/RESULTS.md`](reports/RESULTS.md)**.
 
 **This is NOT a CKB-VM implementation.** The firmware is deliberately a 32-bit toy check (1 input
 capacity, 1 output capacity and a matching 8-bit toy tag) with a Qwenputer-specific I/O bridge. It
@@ -28,6 +33,8 @@ and makes no consensus, proof-of-execution or security claim.
 | Neural fixtures, Clang ELF (fast) | 11 PASS, 1 INPUT_MISMATCH; ~10% fewer chip tokens |
 | `leading_noise` with `--force-call` | PASS (`FAIL;R=FMT`) on both ELFs; forced `valid_fee` control unchanged |
 | Triton executor, verify mode | matches real-weights residual on every token (0 mismatches) |
+| v0.2 context fixtures: oracle / native C / `ref.Machine` | 22/22 each; native C also 24,000 random API calls, 0 mismatches |
+| v0.2 context fixtures, neural (fast) | 22/22 PASS on GNU, 7/7 run on Clang PASS; 1.1k–7.2k chip tokens, 16–95 s |
 
 **ROCm finding.** The circuit is exact only if GEMMs accumulate in fp32. Upstream enforces that with
 `torch.backends.cuda.matmul.allow_bf16_reduced_precision_reduction = False`, which has **no effect on
@@ -45,9 +52,15 @@ its verify mode (weights produce every token, executor cross-checked) is reporte
 - **`AGENTS.md`** — rules for a coding agent working on this PoC (what must not be claimed or changed).
 - **`HANDOFF.md`** — architecture, build stages, gates, pitfalls, AMD fallback.
 - **`docs/RESEARCH.md`** — upstream sources, VM differences and the longer-term CKB-VM roadmap.
-- **`guest/`** — bare-metal RV32 firmware (`ckb_bridge.c`) plus linker script and startup code for the Clang build.
-- **`fixtures/test_vectors.json`** — 12 fixtures with expected firmware output.
-- **`scripts/check_reference.py`**, **`reference_rules.py`** — independent Python oracle (no model needed).
+- **`guest/`** — bare-metal RV32 firmware: `bridge.c` (Qwenputer I/O bridge), `parse.c` (v0.1 payload),
+  `ctx.c`/`ctx.h` (toy context API, a shim and not CKB syscalls), `contract.c`, `emit.c`; `host_main.c`
+  (native test harness); linker script and startup code for the Clang build.
+- **`fixtures/test_vectors.json`** — 12 v0.1 payload fixtures with expected firmware output.
+- **`fixtures/ctx_vectors.json`** — 22 v0.2 context fixtures (payload `V2` or `V2;T`).
+- **`scripts/check_reference.py`**, **`reference_rules.py`**, **`reference_v2.py`** — independent Python oracles (no model needed).
+- **`scripts/ctx_v2.py`** — encodes a fixture's context and injects it into a copy of the ELF.
+- **`scripts/test_host_c.py`** — native C build of the guest sources vs the oracle (fixtures + random API calls).
+- **`scripts/test_capture_guard.py`** — checks the 80-row tool-call capture guard.
 - **`scripts/build_firmware.sh`** — GNU cross-compile against Qwenputer's own `rom.ld`/`crt0.S`
   (`RISCV_MARCH=rv32im` for GCC < 12, which lacks Zba).
 - **`scripts/build_firmware_clang.sh`** — self-contained Clang+LLD build (`rv32im_zba`).
@@ -63,7 +76,7 @@ its verify mode (weights produce every token, executor cross-checked) is reporte
 - **`reports/`** — `RESULTS.md`, per-run manifests (`runs.jsonl`) and raw logs.
 
 Built ELFs are not committed (`build/` is ignored). Rebuild them; the SHA-256s of the ELFs used are
-recorded in `reports/RESULTS.md`.
+recorded in `reports/RESULTS.md`. The v0.1 results' ELFs build from tag `v0.1-gate3`.
 
 ## Quick start
 
@@ -71,6 +84,7 @@ No model or GPU needed:
 
 ```bash
 python3 scripts/check_reference.py
+python3 scripts/test_host_c.py      # needs a native C compiler with ASan/UBSan
 ```
 
 Full reproduction (upstream clone, model download, GPU):

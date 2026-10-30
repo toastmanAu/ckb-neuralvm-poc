@@ -1,0 +1,65 @@
+Loading weights:   0%|          | 0/580 [00:00<?, ?it/s]Loading weights: 100%|██████████| 580/580 [00:00<00:00, 19594.03it/s]
+[transformers] The tokenizer you are loading from '/data/qwenputer/qwenputer-rv' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+  500 tokens (30 text, 469 chip) 6s: F0(1) J(62) F0(0) F0(1) F0(256) F0(0) J(75) V(176)
+  1000 tokens (30 text, 969 chip) 11s: J(62) F0(84) F0(4) F0(259) F0(84) NT F0(84) F0(84)
+  1500 tokens (40 text, 1459 chip) 16s: F1(8) J(7) F0(0) F0(0) F0(1) BYTE(44) ',' J(204)
+  2000 tokens (48 text, 1951 chip) 22s: V(32528) F1(0) ST0 V(0) F1(4) ST0 ST0 ST0
+  2500 tokens (55 text, 2444 chip) 27s: F0(48) F0(32767) V(20) F1(8) J(7) F0(0) F0(0) F0(1)
+  3000 tokens (65 text, 2934 chip) 32s: NT V(32528) F1(0) ST0 V(0) F1(4) ST0 ST0
+  3500 tokens (76 text, 3423 chip) 37s: J(7) F0(0) F0(0) F0(1) BYTE(44) ',' J(204) NT
+  4000 tokens (84 text, 3915 chip) 42s: F1(0) V(4944) F1(8) J(999) NT V(32528) F1(0) ST0
+  4500 tokens (93 text, 4406 chip) 47s: ST0 ST0 ST0 ST0 ST0 ST0 F0(4) F0(0)
+  5000 tokens (102 text, 4897 chip) 53s: V(20) F1(8) J(7) F0(0) F0(0) F0(1) BYTE(48) '0'
+  5500 tokens (115 text, 5384 chip) 58s: V(128) F1(4) V(1522) F1(596) F0(0) J(948) F0(0) F0(1)
+  6000 tokens (132 text, 5867 chip) 63s: F0(0) V(240) F1(4) F0(48) F0(0) V(20) F1(8) J(7)
+  6500 tokens (138 text, 6361 chip) 68s: F0(228) F0(0) F0(1) J(918) NT F0(1) NT F0(2)
+  7000 tokens (151 text, 6848 chip) 74s: F0(11444) J(1025) F0(4) V(244) F1(4) F0(52) F0(4) V(20)
+  7500 tokens (282 text, 7217 chip) 84s: '0' '0' ',' '`' ' (' '0' ' bytes' ')'
+{
+  "mode": "neural_hf_fast",
+  "status": "PASS",
+  "case_id": "probe_long",
+  "device": "Radeon RX 7900 XTX",
+  "backend": "hip 7.2.53211",
+  "torch": "2.14.1+rocm7.2",
+  "rocm_exact_adapter": true,
+  "model_rev": "2d9068508f2b680badb7abcded96fdd107e9ba5d",
+  "firmware_sha256": "57bdd6ba11cd4ddd62f5f266ed86107e5cc41b15f72e9c99f118098967573211",
+  "elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ctx/ckb_bridge-probe_long.elf",
+  "fixture_set": "v0.2_ctx",
+  "base_elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ckb_bridge.elf",
+  "base_elf_sha256": "2a19a0b6a4f379d5611efc1f97bdc6ff3df66a65d8c3d074fb0ed7b79f2116c5",
+  "code_sha256": "2110a697a6afa86ea5e43f8082fde923d7b7e64b2b246ae96676f4772b5d5030",
+  "ctx_sha256": "e01eb37f9d87de3ebf395a17a9af79cff54b83516fe53b2eb5eded47fcef256d",
+  "expected": "T;0,20,;0,20,00112233;0,02,3210;0,00,;0,05,;0,04,11223344;1,04,;0,00000002540BE400;0,000000012A05F200;1;1;0,00000002CB417800;1\n",
+  "actual": "T;0,20,;0,20,00112233;0,02,3210;0,00,;0,05,;0,04,11223344;1,04,;0,00000002540BE400;0,000000012A05F200;1;1;0,00000002CB417800;1\n",
+  "reference_match": true,
+  "chip_tokens": 7217,
+  "text_tokens": 467,
+  "elapsed_s": 94.54,
+  "lock_error": null,
+  "replay_ok": true,
+  "replay": {
+    "ok": true,
+    "positions": 8028,
+    "owned": 7355,
+    "wrong_predictions": 0,
+    "owner_mismatch": 0,
+    "runs": 1
+  },
+  "tool_called": true,
+  "sent_payload": "V2;T",
+  "payload_exact": true,
+  "forced_call": false,
+  "force_ok": null,
+  "verify_mismatch": null,
+  "forced_tokens": null,
+  "force_conflict": null,
+  "head_mismatch": 0,
+  "generated": "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\nV2;T\n</parameter>\n</function>\n</tool_call>\n<tool_response>\nT;0,20,;0,20,00112233;0,02,3210;0,00,;0,05,;0,04,11223344;1,04,;0,00000002540BE400;0,000000012A05F200;1;1;0,00000002CB417800;1\n</tool_response>\n<think>\n\n</think>\n\nThe verification of the payload `V2;T` was successful. The output indicates a valid transaction structure with the following details:\n- **Type**: `T` (Transaction)\n- **Capacity**: `0,20,` (20 bytes)\n- **Lock**: `0,20,00112233` (20 bytes)\n- **Witness**: `0,02,3210` (2 bytes)\n- **Tag**: `0,00,` (0 bytes)\n- **Data**: `0,05,` (5 bytes)\n- **Lock**: `0,04,11223344` (4 bytes)\n- **Witness**: `1,04,` (4 bytes)\n- **Witness**: `0,00000002540B` (20 bytes)\n- **Witness**: `0,000000012A05F200` (20 bytes)\n- **Witness**: `1` (1 byte)\n- **Witness**: `1` (1 byte)\n- **Witness**: `0,00000002C` (20 bytes)\n- **Witness**: `1` (1 byte)\n\nThe transaction appears to be valid based on the provided payload.<|im_end|>",
+  "timestamp": "2026-10-30T15:54:39+10:30"
+}

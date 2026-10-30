@@ -22,7 +22,7 @@ Run a small CKB-*inspired* validation program compiled as RV32IM+Zba ELF through
 
 1. Make the 12 host oracle tests pass; these already pass at handoff, maintain them.
 2. Pin qwenputer commit/model revision and get upstream reference `calc` working on the target machine.
-3. Build `guest/ckb_bridge.c` with upstream linker/runtime map, or inspect the included Clang/LLD-built ELF32 and rerun its compiler recipe; fix compile/link issues without replacing neural execution with host execution.
+3. Build the `guest/` firmware sources (v0.1: `guest/ckb_bridge.c`, tag `v0.1-gate3`) with upstream linker/runtime map, or inspect the included Clang/LLD-built ELF32 and rerun its compiler recipe; fix compile/link issues without replacing neural execution with host execution.
 4. Use upstream `chipformer.rv.elf.program`, `ref.Machine`, `bridge.park`, `bridge.Session` to run fixtures. Capture actual firmware response bytes and compare with fixture expectations.
 5. Run `scripts/run_neural.py` and ensure an actual `ckb_verify` tool call triggers chip execution. If it doesn't, inspect `RvChat.generate` and introduce a **verified forced-text-token path that still passes tokens through the neural chip layers**; never fake a tool response.
 6. Produce comparison logs for at least 5 model-layer fixtures, with `lock_error=None`, positive `chip_tokens`, `replay.ok=True`, and exact expected firmware response.
