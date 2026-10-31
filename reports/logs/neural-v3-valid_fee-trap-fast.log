@@ -1,0 +1,63 @@
+Loading weights:   0%|          | 0/580 [00:00<?, ?it/s]Loading weights: 100%|██████████| 580/580 [00:00<00:00, 16269.93it/s]
+[transformers] The tokenizer you are loading from '/data/qwenputer/qwenputer-rv-trap' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+  500 tokens (75 text, 424 chip) 8s: V(128) F1(1) J(76) F0(62) F0(1) F0(256) F0(62) NT
+  1000 tokens (75 text, 924 chip) 12s: F1(1) V(288) F1(1) J(63) F0(59) F0(59) NT V(288)
+  1500 tokens (75 text, 1424 chip) 17s: F0(272) F0(0) J(89) V(528) F1(1) V(512) F1(1) J(63)
+  2000 tokens (75 text, 1924 chip) 21s: F1(1) J(76) F0(48) F0(31) F0(286) F0(48) NT F0(48)
+  2500 tokens (75 text, 2424 chip) 26s: F0(65) F0(65) NT V(944) F1(1) J(76) F0(65) F0(45)
+  3000 tokens (78 text, 2921 chip) 31s: J(1485) F0(0) F0(0) F0(0) F0(0) F0(0) F0(264) F0(0)
+  3500 tokens (78 text, 3421 chip) 35s: F1(1072) F0(0) F0(294) V(28954) F1(1072) F0(0) NT F0(48)
+  4000 tokens (93 text, 3906 chip) 40s: F0(32763) F0(4) F0(0) V(11424) F1(1907) V(11424) F1(1907) NT
+{
+  "mode": "neural_hf_fast+trap_patched_circuit",
+  "status": "PASS",
+  "case_id": "valid_fee",
+  "device": "Radeon RX 7900 XTX",
+  "backend": "hip 7.2.53211",
+  "torch": "2.14.1+rocm7.2",
+  "rocm_exact_adapter": true,
+  "circuit": "trap_patched",
+  "circuit_patch_sha256": "a35edece3f813b9f4428d43c1900ffcc630313f30de892c4e3ff5fcc3c12adcf",
+  "model_rev": null,
+  "model_index_sha256": "d43da66a62e60b23a89bc16280417ab9a9eaeba0aeba2268573d53fabf11d0ba",
+  "chipformer_json_sha256": "76a9432fed8119e66e4aee35983aa8228d3fc32e5729f5aa812200c96433ccd2",
+  "model_dir": "/data/qwenputer/qwenputer-rv-trap",
+  "firmware_sha256": "213d4f154b8fe33eee8047dc53154144e78f04d0c514ba79678015bff77348a4",
+  "elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ckb_bridge.elf",
+  "fixture_set": "v0.1",
+  "base_elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ckb_bridge.elf",
+  "base_elf_sha256": "213d4f154b8fe33eee8047dc53154144e78f04d0c514ba79678015bff77348a4",
+  "code_sha256": null,
+  "ctx_sha256": null,
+  "expected": "PASS;FEE=000000003B9ACA00\n",
+  "actual": "PASS;FEE=000000003B9ACA00\n",
+  "reference_match": true,
+  "chip_tokens": 4192,
+  "text_tokens": 135,
+  "elapsed_s": 46.33,
+  "lock_error": null,
+  "replay_ok": true,
+  "replay": {
+    "ok": true,
+    "positions": 4716,
+    "owned": 4229,
+    "wrong_predictions": 0,
+    "owner_mismatch": 0,
+    "runs": 1
+  },
+  "tool_called": true,
+  "sent_payload": "V1;I=00000002540BE400;O=0000000218711A00;L=2A;W=2A",
+  "payload_exact": true,
+  "forced_call": false,
+  "force_ok": null,
+  "verify_mismatch": null,
+  "forced_tokens": null,
+  "force_conflict": null,
+  "head_mismatch": 0,
+  "generated": "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\nV1;I=00000002540BE400;O=0000000218711A00;L=2A;W=2A\n</parameter>\n</function>\n</tool_call>\n<tool_response>\nPASS;FEE=000000003B9ACA00\n</tool_response>\n<think>\n\n</think>\n\nThe verification passed. The fee is 000000003B9A00.<|im_end|>",
+  "timestamp": "2026-10-30T19:32:51+10:30"
+}

@@ -1,4 +1,4 @@
-"""Python-only oracle for the v0.2 toy context API and contract. NOT a CKB consensus engine and
+"""Python-only oracle for the v0.2 toy context API and contract, and the v0.3 syscalls over it. NOT a CKB consensus engine and
 NOT neural execution. Written from the rules in guest/ctx.h (ckb-script 1.1.1 store_data) and
 the fixture's structured context, not from the encoded bytes, so it shares no code with the C.
 """
@@ -6,6 +6,7 @@ SUCCESS, INDEX_OUT_OF_BOUND, ITEM_MISSING = 0, 1, 2
 INPUT, OUTPUT = 1, 2  # capacity sources
 ARGS, WITNESS = 1, 2  # partial-load items
 U64 = (1 << 64) - 1
+LOAD_SCRIPT, LOAD_CELL, LOAD_WITNESS = 2052, 2071, 2074  # guest/syscall.h
 
 
 class Ctx:
@@ -53,6 +54,27 @@ class Ctx:
         return SUCCESS, cells[index]
 
 
+def store(data: bytes, buf_len: int, offset: int):
+    off = min(offset, len(data))
+    return SUCCESS, len(data) - off, data[off:][:buf_len]
+
+
+def syscall(c: Ctx, n: int, buf_len: int, offset: int, index: int, source: int):
+    """(rc, *len out, copied bytes) of a v0.3 syscall, per guest/syscall.h."""
+    if n == LOAD_SCRIPT:
+        return c.partial_load(buf_len, offset, ARGS)
+    if n == LOAD_CELL:
+        rc, cap = c.capacity(index, source)
+        return (rc, buf_len, b"") if rc else store(cap.to_bytes(8, "little"), buf_len, offset)
+    if n == LOAD_WITNESS:
+        if not c.valid:
+            return ITEM_MISSING, buf_len, b""
+        if source not in (INPUT, OUTPUT) or index != 0 or c.wit is None:
+            return INDEX_OUT_OF_BOUND, buf_len, b""
+        return store(c.wit, buf_len, offset)
+    raise ValueError(n)
+
+
 def contract(c: Ctx) -> str:
     if not c.valid:
         return "FAIL;R=CTX\n"
@@ -90,10 +112,27 @@ def probe(c: Ctx) -> str:
     return out + "\n"
 
 
+# mirrors guest/contract.c probe_v3: (number, buf_len, offset, index, source)
+SYS_PROBES = [(LOAD_SCRIPT, 0, 0, 0, 0), (LOAD_SCRIPT, 4, 30, 0, 0),
+              (LOAD_WITNESS, 4, 1, 0, INPUT), (LOAD_WITNESS, 4, 0, 1, INPUT), (LOAD_WITNESS, 4, 0, 0, 3),
+              (LOAD_CELL, 8, 0, 0, INPUT), (LOAD_CELL, 4, 6, 0, INPUT), (LOAD_CELL, 8, 0, 2, INPUT),
+              (LOAD_CELL, 8, 0, 0, 3)]
+
+
+def probe_sys(c: Ctx) -> str:
+    out = "S"
+    for p in SYS_PROBES:
+        rc, n, got = syscall(c, *p)
+        out += f";{rc:X},{n:02X}," + got.hex().upper()
+    return out + "\n"
+
+
 def verify(case: dict) -> str:
     c = Ctx(case["ctx"])
-    if case["payload"] == "V2":
+    if case["payload"] in ("V2", "V3"):  # v0.3 reads through syscalls, same verdicts
         return contract(c)
     if case["payload"] == "V2;T":
         return probe(c)
-    raise ValueError(f"not a v0.2 payload: {case['payload']!r}")
+    if case["payload"] == "V3;T":
+        return probe_sys(c)
+    raise ValueError(f"not a v0.2/v0.3 payload: {case['payload']!r}")

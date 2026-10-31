@@ -1,0 +1,290 @@
+{
+ "a": "reports/checkpoints/merge-trap.hashes.json",
+ "b": "reports/checkpoints/merge-stock.hashes.json",
+ "files": {
+  "config.json": "same",
+  "chipformer.json": [
+   "circuit",
+   "slots"
+  ],
+  "tokenizer.json": "same",
+  "generation_config.json": "same"
+ },
+ "only_a": [],
+ "only_b": [],
+ "differ": [
+  {
+   "tensor": "model.layers.10.mlp.down_proj.weight",
+   "a": [
+    [
+     3968,
+     9216
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     3968,
+     9216
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.10.mlp.gate_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.10.mlp.up_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.4.mlp.down_proj.weight",
+   "a": [
+    [
+     3968,
+     9216
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     3968,
+     9216
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.4.mlp.gate_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.4.mlp.up_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.5.mlp.down_proj.weight",
+   "a": [
+    [
+     3968,
+     9216
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     3968,
+     9216
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.5.mlp.gate_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.5.mlp.up_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.6.mlp.down_proj.weight",
+   "a": [
+    [
+     3968,
+     9216
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     3968,
+     9216
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.6.mlp.gate_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.7.mlp.down_proj.weight",
+   "a": [
+    [
+     3968,
+     9216
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     3968,
+     9216
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.7.mlp.gate_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.7.mlp.up_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.8.mlp.gate_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.9.mlp.gate_proj.weight",
+   "a": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     9216,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  }
+ ],
+ "same": 564
+}

@@ -25,6 +25,16 @@ int toy_ctx_valid(void) {
            CTX[ARGS_LEN] <= TOY_MAX_BYTES && (w <= TOY_MAX_BYTES || w == TOY_WITNESS_MISSING);
 }
 
+int toy_store_bytes(void *dst, uint64_t *len, uint64_t offset, const volatile uint8_t *src, uint64_t n) {
+    const uint64_t off = offset < n ? offset : n;
+    const uint64_t full = n - off;
+    const uint64_t real = *len < full ? *len : full;
+    uint8_t *d = dst;
+    for (uint64_t i = 0; i < real; ++i) d[i] = src[off + i];
+    *len = full;
+    return TOY_SUCCESS;
+}
+
 int toy_partial_load(void *dst, uint64_t *len, uint64_t offset, uint64_t source) {
     unsigned base, n;
     if (!toy_ctx_valid()) return TOY_ITEM_MISSING;
@@ -36,13 +46,7 @@ int toy_partial_load(void *dst, uint64_t *len, uint64_t offset, uint64_t source)
     } else {
         return TOY_INDEX_OUT_OF_BOUND;
     }
-    const uint64_t off = offset < n ? offset : n;
-    const uint64_t full = n - off;
-    const uint64_t real = *len < full ? *len : full;
-    uint8_t *d = dst;
-    for (uint64_t i = 0; i < real; ++i) d[i] = CTX[base + (unsigned)(off + i)];
-    *len = full;
-    return TOY_SUCCESS;
+    return toy_store_bytes(dst, len, offset, CTX + base, n);
 }
 
 int toy_load_script_args(void *dst, uint64_t *len, uint64_t offset) {

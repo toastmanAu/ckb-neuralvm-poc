@@ -1,0 +1,25 @@
+device Radeon RX 7900 XTX
+sys_two_in_two_out           IR predictions match the reference on 4437 positions
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+sys_two_in_two_out           dense   prefill exact on 4438 positions (11 trap jumps), 95 wrapped (17.2 s)
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+sys_two_in_two_out           dense   decode  exact on 4438 positions (11 trap jumps), 95 wrapped (159.0 s)
+sys_two_in_two_out           compact prefill exact on 4438 positions (11 trap jumps), 95 wrapped (16.0 s)
+sys_two_in_two_out           compact decode  exact on 4438 positions (11 trap jumps), 95 wrapped (72.6 s)
+sys_long_lock_last_byte      IR predictions match the reference on 4601 positions
+sys_long_lock_last_byte      dense   prefill exact on 4602 positions (19 trap jumps), 95 wrapped (17.3 s)
+sys_long_lock_last_byte      dense   decode  exact on 4602 positions (19 trap jumps), 95 wrapped (165.4 s)
+sys_long_lock_last_byte      compact prefill exact on 4602 positions (19 trap jumps), 95 wrapped (17.4 s)
+sys_long_lock_last_byte      compact decode  exact on 4602 positions (19 trap jumps), 95 wrapped (76.2 s)
+sys_witness_missing          IR predictions match the reference on 552 positions
+sys_witness_missing          dense   prefill exact on 553 positions (1 trap jumps), 95 wrapped (1.4 s)
+sys_witness_missing          dense   decode  exact on 553 positions (1 trap jumps), 95 wrapped (18.9 s)
+sys_witness_missing          compact prefill exact on 553 positions (1 trap jumps), 95 wrapped (1.2 s)
+sys_witness_missing          compact decode  exact on 553 positions (1 trap jumps), 95 wrapped (8.2 s)
+sys_probe_long               IR predictions match the reference on 5305 positions
+sys_probe_long               dense   prefill exact on 5306 positions (9 trap jumps), 95 wrapped (8.2 s)
+sys_probe_long               dense   decode  exact on 5306 positions (9 trap jumps), 95 wrapped (191.9 s)
+sys_probe_long               compact prefill exact on 5306 positions (9 trap jumps), 95 wrapped (7.2 s)
+sys_probe_long               compact decode  exact on 5306 positions (9 trap jumps), 95 wrapped (76.5 s)

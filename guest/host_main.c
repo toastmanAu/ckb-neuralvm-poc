@@ -7,6 +7,9 @@
  *       C <256 hex>            set the context
  *       L <source> <len> <off> toy_partial_load  -> "<rc> <len out> <hex bytes copied or ->"
  *       K <index> <source>     toy_load_cell_capacity -> "<rc> <capacity or ->"
+ *       S <n> <len> <off> <index> <source>
+ *                              ckb_trap_dispatch (v0.3 syscall n) -> as L; offset/index/source are
+ *                              truncated to 32 bits first, as the RV32 registers would hold them
  */
 #include <inttypes.h>
 #include <stdio.h>
@@ -15,10 +18,16 @@
 #include "contract.h"
 #include "ctx.h"
 #include "emit.h"
+#include "syscall.h"
 
 extern uint8_t ckb_ctx[TOY_CTX_SIZE];
 
 void toy_putc(int c) { putchar(c); }
+
+/* the native stand-in for the trapped ecall: straight to the handler */
+long ckb_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long n) {
+    return ckb_trap_dispatch(a0, a1, a2, a3, a4, a5, n);
+}
 
 static int set_ctx(const char *hex) {
     if (strlen(hex) != 2 * TOY_CTX_SIZE) return 0;
@@ -42,6 +51,23 @@ static int api(void) {
             memset(buf, 0xEE, sizeof buf);
             uint64_t len = b;
             const int rc = toy_partial_load(buf, &len, c, a);
+            printf("%d %" PRIu64 " ", rc, len);
+            const uint64_t got = rc == TOY_SUCCESS ? (b < len ? b : len) : 0;
+            if (!got) putchar('-');
+            for (uint64_t i = 0; i < got; ++i) printf("%02X", buf[i]);
+            for (uint64_t i = got; i < sizeof buf; ++i)
+                if (buf[i] != 0xEE) { printf(" OVERWRITE"); break; }
+            putchar('\n');
+        } else if (op[0] == 'S') {
+            uint8_t buf[TOY_MAX_BYTES + 8];
+            uint64_t n, idx, src;
+            if (scanf("%" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64, &n, &b, &c, &idx, &src) != 5 ||
+                b > sizeof buf)
+                return 2;
+            memset(buf, 0xEE, sizeof buf);
+            uint64_t len = b;
+            const int rc = (int)ckb_trap_dispatch((long)buf, (long)&len, (long)(uint32_t)c, (long)(uint32_t)idx,
+                                                  (long)(uint32_t)src, 0, (long)n);
             printf("%d %" PRIu64 " ", rc, len);
             const uint64_t got = rc == TOY_SUCCESS ? (b < len ? b : len) : 0;
             if (!got) putchar('-');

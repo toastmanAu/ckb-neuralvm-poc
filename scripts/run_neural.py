@@ -27,7 +27,23 @@ from forced_feed import ForcedRvChat
 from reference_rules import verify as oracle
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-MODEL_REV = "2d9068508f2b680badb7abcded96fdd107e9ba5d"
+MODEL_REV = "2d9068508f2b680badb7abcded96fdd107e9ba5d"  # the published Qwen3.5-4B-Qwenputer
+TRAP_PATCH = ROOT / "patches/qwenputer-ecall-trap.patch"
+
+
+def circuit_info(model_dir) -> dict:
+    """Which circuit this run used: the tree's (spec.TRAP_CALLS marks the patched one). main()
+    refuses to run unless the checkpoint was merged from the same circuit (circuit_mismatch), so
+    the label describes the weights too; the published revision is recorded only for stock. The
+    checkpoint's identity is chipformer_json_sha256 (the index is the same for every rv1 merge);
+    reports/checkpoints/*.hashes.json pin the tensors themselves."""
+    patched = hasattr(S, "TRAP_CALLS")
+    idx = pathlib.Path(model_dir) / "model.safetensors.index.json"
+    return {"circuit": "trap_patched" if patched else "stock",
+            "circuit_patch_sha256": sha256(TRAP_PATCH) if patched else None,
+            "model_rev": None if patched else MODEL_REV,
+            "model_index_sha256": sha256(idx) if idx.exists() else None,
+            "chipformer_json_sha256": sha256(pathlib.Path(model_dir) / "chipformer.json")}
 CKB_TOOL = {"type": "function", "function": {
     "name": "ckb_verify",
     "description": "Run a toy CKB-style capacity/lock-tag verifier. It is NOT a valid CKB transaction verification. Use payload exactly as provided without changes.",
@@ -36,6 +52,21 @@ CKB_TOOL = {"type": "function", "function": {
         "required": ["payload"]}}}
 START, END = "<tool_response>\n", "</tool_response>"
 CALL_HEAD, CALL_TAIL = "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\n", "\n</parameter>\n</function>\n</tool_call>"
+
+
+def circuit_mismatch(chat) -> str | None:
+    """The tree's circuit (as RvChat built it) against the one the checkpoint was merged from."""
+    have, want = chat.c.stats(), chat.meta.get("circuit")
+    return None if have == want else f"code tree circuit {have} != checkpoint circuit {want}"
+
+
+def refuse(a, status: str, case_id: str, reason: str) -> None:
+    out = {"status": status, "case_id": case_id, "reason": reason, "model_dir": a.model,
+           "timestamp": datetime.datetime.now().astimezone().isoformat(timespec="seconds")}
+    print(json.dumps(out, indent=2))
+    with open(a.manifest, "a") as f:
+        f.write(json.dumps(out) + "\n")
+    raise SystemExit(1)
 
 
 def capture_check(T, payload: str) -> str | None:
@@ -89,12 +120,13 @@ def main() -> None:
     a = p.parse_args()
     v1 = json.loads((ROOT / "fixtures/test_vectors.json").read_text())
     v2 = json.loads((ROOT / "fixtures/ctx_vectors.json").read_text())
-    ids = [x["id"] for x in v1 + v2]
-    assert len(ids) == len(set(ids)), "fixture ids must be unique across v0.1 and v0.2"
-    v = next((x for x in v1 + v2 if x["id"] == a.case), None)
+    v3 = json.loads((ROOT / "fixtures/syscall_vectors.json").read_text())
+    ids = [x["id"] for x in v1 + v2 + v3]
+    assert len(ids) == len(set(ids)), "fixture ids must be unique across all fixture files"
+    v = next((x for x in v1 + v2 + v3 if x["id"] == a.case), None)
     if v is None:
         raise SystemExit(f"Unknown case {a.case}")
-    is_v2 = v in v2
+    is_v2 = v in v2 or v in v3  # a context-injected fixture
     want = reference_v2.verify(v) if is_v2 else oracle(v["payload"])
     assert want == v["expected"], "fixture disagrees with the independent oracle"
     base_elf = a.elf
@@ -102,15 +134,13 @@ def main() -> None:
         a.elf = str(ctx_v2.case_elf(base_elf, v, ROOT / "build/ctx"))
     blocked = capture_check(BR.Text(pathlib.Path(a.model) / "tokenizer.json"), v["payload"])
     if blocked:
-        out = {"status": "BRIDGE_BLOCKED", "case_id": v["id"], "reason": blocked,
-               "timestamp": datetime.datetime.now().astimezone().isoformat(timespec="seconds")}
-        print(json.dumps(out, indent=2))
-        with open(a.manifest, "a") as f:
-            f.write(json.dumps(out) + "\n")
-        raise SystemExit(1)
+        refuse(a, "BRIDGE_BLOCKED", v["id"], blocked)
 
     chat = (ForcedRvChat if a.force_call else RvChat)(a.model, fast=not a.slow,
                                                          executor="verify" if a.executor_verify else a.executor)
+    mismatch = circuit_mismatch(chat)
+    if mismatch:  # e.g. the patched tree with the published weights, or the reverse
+        refuse(a, "CIRCUIT_MISMATCH", v["id"], mismatch)
     adapter = rocm_exact.needed() and not a.no_adapter
     if adapter:
         rocm_exact.install(rocm_exact.chip_modules(chat))
@@ -154,14 +184,17 @@ def main() -> None:
             if a.executor else "neural_hf" if a.slow else "neural_hf_fast")
     if a.force_call:
         mode += "+forced_call"
+    circ = circuit_info(a.model)
+    if circ["circuit"] != "stock":
+        mode += "+trap_patched_circuit"
     props = torch.cuda.get_device_properties(0) if torch.cuda.is_available() else None
     out = {
         "mode": mode, "status": status, "case_id": v["id"],
         "device": props.name if props else "cpu",
         "backend": f"hip {torch.version.hip}" if torch.version.hip else f"cuda {torch.version.cuda}",
         "torch": torch.__version__, "rocm_exact_adapter": adapter,
-        "model_rev": MODEL_REV, "firmware_sha256": sha256(a.elf), "elf": a.elf,
-        "fixture_set": "v0.2_ctx" if is_v2 else "v0.1",
+        **circ, "model_dir": a.model, "firmware_sha256": sha256(a.elf), "elf": a.elf,
+        "fixture_set": "v0.3_sys" if v in v3 else "v0.2_ctx" if is_v2 else "v0.1",
         "base_elf": base_elf, "base_elf_sha256": sha256(base_elf),
         "code_sha256": ctx_v2.code_sha256(a.elf) if is_v2 else None,
         "ctx_sha256": (hashlib.sha256(ctx_v2.encode(v["ctx"])).hexdigest() if is_v2 and v["ctx"] else None),

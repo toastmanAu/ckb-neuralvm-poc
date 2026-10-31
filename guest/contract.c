@@ -6,6 +6,7 @@
 #include "ctx.h"
 #include "emit.h"
 #include "parse.h"
+#include "syscall.h"
 
 #define CHUNK 4u  /* the lock compares args and witness through 4-byte partial loads */
 
@@ -119,8 +120,95 @@ static void probe_v2(void) {
     toy_putc('\n');
 }
 
+/* ---- v0.3: the same toy lock, every read a CKB-numbered ecall (syscall.h) ---- */
+
+static int cell_capacity(uint64_t index, uint64_t source, uint64_t *cap) {
+    uint8_t le[8];
+    uint64_t len = 8;
+    const int rc = ckb_load_cell(le, &len, 0, (uint32_t)index, (uint32_t)source);
+    if (rc != TOY_SUCCESS) return rc;
+    *cap = 0;
+    for (int i = 7; i >= 0; --i) *cap = (*cap << 8) | le[i];
+    return TOY_SUCCESS;
+}
+
+static int sum_capacity_v3(uint64_t source, uint64_t *sum, unsigned *n) {
+    uint64_t cap;
+    *sum = 0;
+    *n = 0;
+    while (cell_capacity(*n, source, &cap) == TOY_SUCCESS) {
+        if (*sum + cap < *sum) return 0;
+        *sum += cap;
+        ++*n;
+    }
+    return 1;
+}
+
+static int lock_matches_v3(void) {
+    uint8_t a[CHUNK], w[CHUNK];
+    uint64_t args_len = 0, wit_len = 0;
+    (void)ckb_load_script(a, &args_len, 0);
+    (void)ckb_load_witness(w, &wit_len, 0, 0, TOY_SOURCE_INPUT);
+    if (args_len != wit_len) return 0;
+    for (uint32_t off = 0; off < args_len; off += CHUNK) {
+        uint64_t la = CHUNK, lw = CHUNK;
+        (void)ckb_load_script(a, &la, off);
+        (void)ckb_load_witness(w, &lw, off, 0, TOY_SOURCE_INPUT);
+        const unsigned got = la < CHUNK ? (unsigned)la : CHUNK;
+        for (unsigned i = 0; i < got; ++i)
+            if (a[i] != w[i]) return 0;
+    }
+    return 1;
+}
+
+/* Same verdicts as contract_v2 on every context. */
+static void contract_v3(void) {
+    uint64_t probe_len = 0, sum_in, sum_out;
+    unsigned n_in, n_out;
+    uint8_t probe[1];
+    if (!toy_ctx_valid()) { fail("CTX"); return; }
+    if (ckb_load_witness(probe, &probe_len, 0, 0, TOY_SOURCE_INPUT) != TOY_SUCCESS) { fail("NOWIT"); return; }
+    if (!lock_matches_v3()) { fail("LOCK"); return; }
+    if (!sum_capacity_v3(TOY_SOURCE_INPUT, &sum_in, &n_in)) { fail("OVF"); return; }
+    if (n_in == 0) { fail("NOIN"); return; }
+    if (!sum_capacity_v3(TOY_SOURCE_OUTPUT, &sum_out, &n_out)) { fail("OVF"); return; }
+    if (sum_in < sum_out) { fail("CAP"); return; }
+    pass_fee(sum_in - sum_out);
+}
+
+/* ";<rc>,<*len out, 2 hex>,<copied bytes, hex>" for one syscall */
+static void probe_sys(long n, uint64_t buf_len, uint32_t offset, uint32_t index, uint32_t source) {
+    uint8_t buf[8];
+    uint64_t len = buf_len;
+    const int rc = (int)ckb_syscall((long)buf, (long)&len, (long)offset, (long)index, (long)source, 0, n);
+    toy_putc(';');
+    emit_hex((uint64_t)rc, 1);
+    toy_putc(',');
+    emit_hex(len, 2);
+    toy_putc(',');
+    if (rc == TOY_SUCCESS)
+        for (uint64_t i = 0; i < buf_len && i < len; ++i) emit_hex(buf[i], 2);
+}
+
+/* A fixed list of syscalls, mirrored by scripts/reference_v2.py SYS_PROBES. */
+static void probe_v3(void) {
+    toy_putc('S');
+    probe_sys(SYS_LOAD_SCRIPT, 0, 0, 0, 0);
+    probe_sys(SYS_LOAD_SCRIPT, 4, 30, 0, 0);
+    probe_sys(SYS_LOAD_WITNESS, 4, 1, 0, TOY_SOURCE_INPUT);
+    probe_sys(SYS_LOAD_WITNESS, 4, 0, 1, TOY_SOURCE_INPUT);
+    probe_sys(SYS_LOAD_WITNESS, 4, 0, 0, 3);
+    probe_sys(SYS_LOAD_CELL, 8, 0, 0, TOY_SOURCE_INPUT);
+    probe_sys(SYS_LOAD_CELL, 4, 6, 0, TOY_SOURCE_INPUT);
+    probe_sys(SYS_LOAD_CELL, 8, 0, 2, TOY_SOURCE_INPUT);
+    probe_sys(SYS_LOAD_CELL, 8, 0, 0, 3);
+    toy_putc('\n');
+}
+
 void contract_dispatch(const char *payload) {
     if (str_eq(payload, "V2")) contract_v2();
     else if (str_eq(payload, "V2;T")) probe_v2();
+    else if (str_eq(payload, "V3")) contract_v3();
+    else if (str_eq(payload, "V3;T")) probe_v3();
     else contract_v1(payload);
 }

@@ -2,7 +2,9 @@
 
 **Status: PoC achieved (Gate 3) on AMD ROCm, on both the slow HF path and the fast (compacted +
 CUDA-graph) path, with one documented arithmetic adapter. v0.2 (HANDOFF §10, host-injected
-transaction context) also runs exactly on the neural layers: 22/22 context fixtures.**
+transaction context) also runs exactly on the neural layers: 22/22 context fixtures. v0.3: with a
+locally patched and rebuilt circuit that decodes CKB syscall numbers 2052/2071/2074, 22/22 syscall
+fixtures run exactly (a modified checkpoint, not the published one).**
 v0.1: 11 of 12 fixtures executed exactly on Qwenputer's neural RV32 CPU with lockstep and IR
 replay clean; the 12th (`leading_noise`) failed at Qwen's *text transcription* of the payload,
 not in execution, and passes with the HANDOFF §8 controlled feed. v0.2: see its section below.
@@ -299,6 +301,133 @@ before loading the model. `scripts/test_capture_guard.py`: v0.1 fixtures use 58�
 vocabulary token (`-` × 32) is refused and that row is in fact cut to 16 bytes. Deleting either
 branch of the guard turns the test red.
 
+## v0.3: CKB syscall numbers decoded by a patched circuit (HANDOFF §10, 2026-10-30)
+
+**Result: with a locally rebuilt checkpoint whose circuit decodes ecall 2052/2071/2074, all 22
+syscall fixtures PASS on the neural layers (GNU ELF, fast path), lockstep `None`, replay ok,
+exact payload; the v0.2 and v0.1 checks pass on it too. The published checkpoint faults on the
+same calls, as upstream's own reference machine predicts.** This is a **modified circuit** and a
+**new local checkpoint**, not the published Qwen3.5-4B-Qwenputer; every run on it is labelled
+`+trap_patched_circuit` and records the patch SHA instead of the published revision.
+
+**The circuit change** (`patches/qwenputer-ecall-trap.patch`, applied to a separate clone at
+`ca13310`; the upstream checkout is untouched). The stock circuit hard-faults on every ecall
+except putchar (1) and exit (93) (`core.py`, `fault.7`). The patch adds 2052/2071/2074 to the
+decoded a7 values, removes them from `fault.7`, and makes each a `J` record to a fixed ROM word
+(`TRAP_WORD` = 0x10, address 0x40040): a jump with no link register and no CSR. The reference
+machine (`ref.py`) gets the same rule, so lockstep and replay check it. Circuit size: 11 layers
+either way; 2918 → 2921 dims, 42114 → 42126 FFN units, 1265 → 1268 slots; hidden 3968 unchanged.
+
+**The firmware side.** `guest/start.S` puts `ckb_trap_entry` at 0x40040 (`.org 0x40`; both
+build scripts now use this repo's `start.S` and `rom.ld` and fail if the symbol moves). Calls go
+through `ckb_syscall` (a7 = number, then `ecall`); the trap leaves `ra` pointing at the caller,
+so the handler (`guest/trap.c`) tail-returns there with the result in a0. Toy semantics, in
+`guest/syscall.h`: 2052 returns the script args bytes (not a Molecule Script), 2071 the cell's
+capacity as 8 bytes LE (not a CellOutput), 2074 the single witness at index 0; partial loading
+and return codes as v0.2; an absent witness index, including a missing witness, is
+INDEX_OUT_OF_BOUND as in ckb-script. RV32 pointers and offsets, sources 1/2 only. Contract `V3`
+is the v0.2 lock with every read a syscall (same verdicts by construction, checked by the
+fixtures); `V3;T` prints a syscall probe transcript.
+
+**Checks, in the order they were run:**
+
+1. *Oracle / native C*: `reference_v2.syscall` and the native build (`trap.c` called directly)
+   agree on all 22 v0.3 fixtures (56/56 fixtures overall), and on the random calls, about 30% of
+   which now go through `ckb_trap_dispatch` with 32-bit arguments as on RV32. Mutation check:
+   dropping the missing-witness → INDEX_OUT_OF_BOUND remap or the witness index check turns it red.
+2. *Reference machines*: on the **patched** `ref.Machine` all 56 fixtures pass on both ELFs. On
+   **stock** upstream, the 17 v0.3 cases that reach a syscall die with fault `ecall` at 0x4004c
+   (the `ecall` in `ckb_syscall`); the 5 invalid-context cases pass because they never make one.
+3. *Circuit semantics* (`scripts/gpucheck_trap.py`, bridge-free self-test ELFs from
+   `scripts/build_selftest.sh`): the patched IR's own predictions equal the reference trace at
+   every position, and the HF weights equal the IR bit for bit, dense and compacted, prefill and
+   token-by-token decode (4 cases, 552–5305 positions, 40 trap jumps; log
+   `reports/logs/gpucheck-trap.log`).
+4. *Checkpoint provenance* (`scripts/compare_checkpoints.py`, manifests in
+   `reports/checkpoints/`): upstream's `chipformer.rv.merge` was run on base `Qwen/Qwen3.5-4B` @
+   `851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`, first **unpatched** as a positive control:
+   572 of 580 tensors are byte-identical to the published checkpoint, including all 11 chip
+   layers, the embeddings and configs. So the positive control is **not** fully identical: the
+   other 8 are the full-attention `k_proj` of Qwen's layers 14, 18, …, 42, each differing only in
+   column 2776 (`mu_dim` in `chipformer.json`, the mute dim), in 280–418 of 4,063,232 elements,
+   by ≤ 4.9e-4 (`reports/checkpoints/merge-trap-vs-published.detail.json`, from
+   `compare_checkpoints.py --detail`). That column is written only by `q35.mute`'s anti-sink keys,
+   which `fit_anti_sink` computes by running base Qwen on calibration prompts on whatever GPU the
+   merge runs on (here ROCm, in bf16). Differing GPU numerics are the likely cause, consistent
+   with the v0.1 finding, but **not isolated**: a different library version would look the same.
+   These keys act on Qwen's attention to chip positions, not on the circuit. The **patched**
+   merge then differs from our stock merge in exactly 16 tensors, all MLP weights of chip layers
+   4–10; every Qwen layer, the embeddings and the anti-sink keys are byte-identical to it. Relative
+   to the published checkpoint the patched one therefore differs in 24 tensors (those 16 + the 8).
+5. *Neural* (`run_neural.py` from the patched tree, model `/data/qwenputer/qwenputer-rv-trap`).
+
+| v0.3 case | expected | chip tokens / wall |
+|---|---|---|
+| `sys_two_in_two_out` | `PASS;FEE=000000001DCD6500` | 5468 / 57 s |
+| `sys_one_in_one_out` | `PASS;FEE=000000003B9ACA00` | 4250 / 45 s |
+| `sys_ctx_lock_mismatch` | `FAIL;R=LOCK` | 2276 / 27 s |
+| `sys_witness_missing` | `FAIL;R=NOWIT` | 1553 / 19 s |
+| `sys_lock_len_mismatch` | `FAIL;R=LOCK` | 1887 / 24 s |
+| `sys_long_lock_match` | `PASS;FEE=0000000000000004` | 7481 / 75 s |
+| `sys_long_lock_last_byte` | `FAIL;R=LOCK` | 5604 / 58 s |
+| `sys_input_sum_overflow` | `FAIL;R=OVF` | 3475 / 38 s |
+| `sys_output_sum_overflow` | `FAIL;R=OVF` | 4263 / 45 s |
+| `sys_max_sum_exact` | `PASS;FEE=0000000000000000` | 4771 / 49 s |
+| `sys_ctx_capacity_fail` | `FAIL;R=CAP` | 5083 / 52 s |
+| `sys_no_inputs` | `FAIL;R=NOIN` | 2476 / 28 s |
+| `sys_no_outputs` | `PASS;FEE=000000001DCD6500` | 3623 / 39 s |
+| `sys_empty_lock` | `PASS;FEE=0000000000000001` | 3767 / 41 s |
+| `sys_bad_magic` | `FAIL;R=CTX` | 1324 / 17 s |
+| `sys_bad_count` | `FAIL;R=CTX` | 1328 / 17 s |
+| `sys_bad_args_len` | `FAIL;R=CTX` | 1335 / 17 s |
+| `sys_bad_witness_len` | `FAIL;R=CTX` | 1339 / 17 s |
+| `sys_unpatched` | `FAIL;R=CTX` | 1312 / 17 s |
+| `sys_probe_long` | `S;0,20,;0,02,3210;0,04…` | 6596 / 69 s |
+| `sys_probe_missing` | `S;0,00,;0,00,;1,04,;1,…` | 5876 / 62 s |
+| `sys_probe_bad_ctx` | `S;2,00,;2,04,;2,04,;2,…` | 3840 / 65 s |
+
+Also on the patched checkpoint: v0.2 `two_in_two_out` PASS (3326 chip tokens) and v0.1
+`valid_fee` PASS (4192). Only these two non-syscall cases were re-run neurally on it; the other
+v0.1/v0.2 fixtures pass on the patched reference machine but were not re-run on the patched
+weights, and every `gpucheck_trap` trace takes the trap.
+
+**Negative control on the published checkpoint:** `sys_two_in_two_out` from the stock tree is
+`FAIL` with lockstep `None` and replay ok, i.e. the published weights predict the stock fault
+token for token. After the fault Qwen itself wrote a plausible but invented tool response ("The
+payload "V3" is not a valid CKB transaction format…") and closed the tag: another reason the
+verdict is only ever the firmware's bytes.
+
+**A bug the checks caught.** The first patched checkpoint failed every v0.3 run with
+TRACE_MISMATCH at the first trap: the model predicted `J(0)` where the reference has `J(16)`.
+Upstream's `case()` drops an `int` payload (only family ids are ints), so the constant trap word
+never reached the payload bits. `gpucheck_trap.py` had passed because `hf.check` compares the
+weights with the same IR; it now first compares the IR's predictions with the reference trace,
+which reproduced the failure exactly (11 wrong of 4437, all at trap positions) before the fix
+(the payload as constant bits) and passes after it. That failing check's output was not saved;
+the 6 failed neural runs remain in `reports/runs.jsonl`, with `chipformer_json_sha256`
+`04076f15…`. The merge logs are `reports/logs/merge-{stock,trap}.log`.
+
+| artifact | sha256 |
+|---|---|
+| `patches/qwenputer-ecall-trap.patch` | `a35edece3f813b9f4428d43c1900ffcc630313f30de892c4e3ff5fcc3c12adcf` |
+| patched checkpoint, per-tensor manifest `reports/checkpoints/merge-trap.hashes.json` | `3bd3045eaa79368e8783f363e348fe4be939ff82beeb204d386420e9d949f0a2` |
+| patched checkpoint `chipformer.json` (recorded per run as `chipformer_json_sha256`) | `76a9432fed8119e66e4aee35983aa8228d3fc32e5729f5aa812200c96433ccd2` |
+| published checkpoint `chipformer.json` | `e62bc08b357b900ad84d007034ce4738985a7db1908994a4c85cf2a6657c576d` |
+
+The per-tensor manifests pin the weights; runs record only `chipformer_json_sha256`, which is
+layout metadata (it told the first, buggy patched checkpoint, `04076f15…`, apart from the final
+one) and not a hash of the weights. `model_index_sha256` is the same for every rv1 merge and
+identifies nothing. `run_neural.py` now refuses to run (`CIRCUIT_MISMATCH`) unless the code
+tree's circuit has the same size statistics as the checkpoint's `chipformer.json` (checked on all
+four tree/checkpoint pairings); circuits of identical size would not be told apart.
+| v0.3 firmware, GNU `build/ckb_bridge.elf` | `213d4f154b8fe33eee8047dc53154144e78f04d0c514ba79678015bff77348a4` |
+| v0.3 firmware, Clang `build/ckb_bridge_clang.elf` | `4c40c9a92e81c049e1766d91102edbc4a6a66a65f86d910ba53454c4e7415a53` |
+| self-test `build/selftest-V3.elf` / `selftest-V3_T.elf` | `e7f74755…0ba3c4` / `430f2974…6ab9fa` |
+
+The v0.2 section's ELF hashes are those of commit `e8f7d6c`; the v0.3 firmware adds the trap
+entry and syscall code, and the v0.2 and v0.1 fixtures were re-checked on it on both reference
+machines (stock and patched) but re-run neurally only for the two cases above.
+
 ## Not done / open
 
 - Executor-only timing was not measured (it is not neural inference); only verify mode was run.
@@ -309,8 +438,12 @@ branch of the guard turns the test red.
   section): such calls are refused before the run instead of silently corrupted.
 - v0.2 on Clang: 7 of the 22 context fixtures were run on the neural layers (all 22 on
   `ref.Machine`). The forced feed and executor verify were not repeated on v0.2.
-- A neural ecall decoder for selected CKB syscall numbers (2052/2071/2074), the HANDOFF §10 step
-  after this one, is not started.
+- v0.3 ran on the GNU ELF only; the Clang ELF passed v0.3 on both reference machines but was
+  not run neurally. The patched checkpoint was not run through upstream's text-fidelity check
+  (`chipformer.rv.textcheck`); its Qwen layers are byte-identical to our stock merge, which
+  differs from the published one only in the anti-sink keys described above.
+- The trap has no return-address register: syscalls must be made through `ckb_syscall`. A real
+  trap (saving the PC, returning with `mret`) would need a register write in the circuit.
 
 ## Distance to real CKB-VM (unchanged by these results)
 
@@ -340,7 +473,23 @@ $PY $POC/scripts/test_capture_guard.py --tokenizer $M/tokenizer.json --elf $POC/
 $PY $POC/scripts/run_neural.py --model $M --elf $POC/build/ckb_bridge.elf --case two_in_two_out  # v0.2
 ```
 
-`--case` takes any id from either fixture file (ids are unique across both); a v0.2 id makes the
+v0.3 (patched circuit; needs the base model, ~37 GB RAM for the merge, and a separate clone):
+
+```bash
+git clone https://github.com/divagr18/qwenputer.git qwenputer-trap && cd qwenputer-trap
+git checkout ca13310e2f9f788d1dd3feeea8213c1b0c23913c && git apply $POC/patches/qwenputer-ecall-trap.patch
+hf download Qwen/Qwen3.5-4B --revision 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a --local-dir $BASE
+cd experimental/riscv && export PYTHONPATH=$PWD:$POC/scripts
+$PY -m chipformer.rv.merge $BASE --out $TRAPM                     # ~1 min, peak ~37 GB RAM
+RISCV_MARCH=rv32im bash $POC/scripts/build_selftest.sh
+$PY $POC/scripts/gpucheck_trap.py                                 # IR vs reference, weights vs IR
+$PY $POC/scripts/compare_checkpoints.py $TRAPM $POC/reports/checkpoints/merge-stock.hashes.json
+$PY $POC/scripts/run_upstream_reference.py --elf $POC/build/ckb_bridge.elf --tokenizer $M/tokenizer.json
+# (from the stock tree, the same command asserts that each v0.3 syscall faults with cause ecall)
+$PY $POC/scripts/run_neural.py --model $TRAPM --elf $POC/build/ckb_bridge.elf --case sys_two_in_two_out
+```
+
+`--case` takes any id from any fixture file (ids are unique across all three); a v0.2 id makes the
 runner inject that fixture's context into a copy of `--elf` under `build/ctx/` and run that.
 
 `run_neural.py` prints one JSON object (`mode`, `device`, `model_rev`, `firmware_sha256`,

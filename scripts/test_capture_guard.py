@@ -58,7 +58,7 @@ def main() -> None:
     p.add_argument("--elf", default=str(ROOT / "build/ckb_bridge.elf"))
     a = p.parse_args()
     T = BR.Text(a.tokenizer)
-    for name in ("test_vectors.json", "ctx_vectors.json"):
+    for name in ("test_vectors.json", "ctx_vectors.json", "syscall_vectors.json"):
         counts = {v["id"]: n_captured(T, v["payload"]) for v in json.loads((ROOT / "fixtures" / name).read_text())}
         print(f"{name}: max {max(counts.values())} rows ({max(counts, key=counts.get)}), "
               f"min {min(counts.values())}")

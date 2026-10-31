@@ -1,0 +1,151 @@
+{
+ "a": "reports/checkpoints/merge-stock.hashes.json",
+ "b": "reports/checkpoints/published.hashes.json",
+ "files": {
+  "config.json": "same",
+  "chipformer.json": "same",
+  "tokenizer.json": "same",
+  "generation_config.json": "same"
+ },
+ "only_a": [],
+ "only_b": [],
+ "differ": [
+  {
+   "tensor": "model.layers.14.self_attn.k_proj.weight",
+   "a": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.18.self_attn.k_proj.weight",
+   "a": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.22.self_attn.k_proj.weight",
+   "a": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.26.self_attn.k_proj.weight",
+   "a": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.30.self_attn.k_proj.weight",
+   "a": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.34.self_attn.k_proj.weight",
+   "a": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.38.self_attn.k_proj.weight",
+   "a": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  },
+  {
+   "tensor": "model.layers.42.self_attn.k_proj.weight",
+   "a": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ],
+   "b": [
+    [
+     1024,
+     3968
+    ],
+    "torch.bfloat16"
+   ]
+  }
+ ],
+ "same": 572
+}

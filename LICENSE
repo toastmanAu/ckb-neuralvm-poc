@@ -24,7 +24,8 @@ SOFTWARE.
 Third-party notice
 
 guest/start.S is adapted from chipformer/rv/env/crt0.S in Qwenputer
-(https://github.com/divagr18/qwenputer), which is distributed under:
+(https://github.com/divagr18/qwenputer), and patches/qwenputer-ecall-trap.patch modifies and
+quotes Qwenputer's chipformer/rv/{core,ref,spec}.py; Qwenputer is distributed under:
 
 MIT License
 

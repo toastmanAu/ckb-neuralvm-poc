@@ -32,6 +32,8 @@
 
 int toy_ctx_valid(void);
 int toy_partial_load(void *dst, uint64_t *len, uint64_t offset, uint64_t source);
+/* store_data over any n bytes at src (the rule above); the syscall layer uses it too */
+int toy_store_bytes(void *dst, uint64_t *len, uint64_t offset, const volatile uint8_t *src, uint64_t n);
 int toy_load_script_args(void *dst, uint64_t *len, uint64_t offset);
 int toy_load_witness(void *dst, uint64_t *len, uint64_t offset);
 int toy_load_cell_capacity(uint64_t *capacity, uint64_t index, uint64_t source);

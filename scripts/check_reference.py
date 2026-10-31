@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Checks deterministic test vectors (v0.1 payloads and v0.2 contexts) against the independent
+"""Checks deterministic test vectors (v0.1 payloads, v0.2 contexts, v0.3 syscalls) against the independent
 Python oracles. No model, GPU or RV32 build needed."""
 import json
 import pathlib
@@ -13,7 +13,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 def main():
     sets = [("test_vectors.json", lambda t: verify(t["payload"])),
-            ("ctx_vectors.json", reference_v2.verify)]
+            ("ctx_vectors.json", reference_v2.verify),
+            ("syscall_vectors.json", reference_v2.verify)]
     errors, total = [], 0
     for name, oracle in sets:
         for t in json.loads((ROOT / "fixtures" / name).read_text()):

@@ -13,8 +13,17 @@ writing the tool call) via the HANDOFF §8 controlled token feed.
 **v0.2 (HANDOFF §10):** the firmware now also reads a small **host-injected transaction
 context** (2 inputs, 2 outputs, script args, witness) through a toy loader API whose partial-load
 rules and return codes follow ckb-script's `store_data`. All 22 context fixtures run exactly on the
-neural layers, covering overflow, missing witness, out-of-range indices and partial reads. Full
-write-up, evidence and rerun commands: **[`reports/RESULTS.md`](reports/RESULTS.md)**.
+neural layers, covering overflow, missing witness, out-of-range indices and partial reads.
+
+**v0.3 (HANDOFF §10, modified circuit):** the firmware reads the context through real `ecall`s
+with CKB syscall numbers 2052/2071/2074. Upstream's circuit faults on those, so
+`patches/qwenputer-ecall-trap.patch` makes the circuit jump to a firmware handler instead, and
+the checkpoint is rebuilt locally with upstream's own merge. Its unpatched control build matches
+the published chip layers byte for byte; the patched one differs from that control only in chip-layer
+MLPs (from the published one also in 8 Qwen attention keys fitted at merge time; see RESULTS). All 22
+syscall fixtures run exactly on it; the published checkpoint faults on them, as expected. This is
+a **modified local checkpoint**, labelled as such in every run. Full write-up, evidence and rerun
+commands: **[`reports/RESULTS.md`](reports/RESULTS.md)**.
 
 **This is NOT a CKB-VM implementation.** The firmware is deliberately a 32-bit toy check (1 input
 capacity, 1 output capacity and a matching 8-bit toy tag) with a Qwenputer-specific I/O bridge. It
@@ -34,6 +43,7 @@ and makes no consensus, proof-of-execution or security claim.
 | `leading_noise` with `--force-call` | PASS (`FAIL;R=FMT`) on both ELFs; forced `valid_fee` control unchanged |
 | Triton executor, verify mode | matches real-weights residual on every token (0 mismatches) |
 | v0.2 context fixtures: oracle / native C / `ref.Machine` | 22/22 each; native C also 24,000 random API calls, 0 mismatches |
+| v0.3 syscall fixtures, neural (fast, patched checkpoint) | 22/22 PASS on GNU; published checkpoint faults on them (negative control) |
 | v0.2 context fixtures, neural (fast) | 22/22 PASS on GNU, 7/7 run on Clang PASS; 1.1k–7.2k chip tokens, 16–95 s |
 
 **ROCm finding.** The circuit is exact only if GEMMs accumulate in fp32. Upstream enforces that with
@@ -53,10 +63,15 @@ its verify mode (weights produce every token, executor cross-checked) is reporte
 - **`HANDOFF.md`** — architecture, build stages, gates, pitfalls, AMD fallback.
 - **`docs/RESEARCH.md`** — upstream sources, VM differences and the longer-term CKB-VM roadmap.
 - **`guest/`** — bare-metal RV32 firmware: `bridge.c` (Qwenputer I/O bridge), `parse.c` (v0.1 payload),
-  `ctx.c`/`ctx.h` (toy context API, a shim and not CKB syscalls), `contract.c`, `emit.c`; `host_main.c`
+  `ctx.c`/`ctx.h` (toy context API, a shim and not CKB syscalls), `trap.c`/`syscall.h` (v0.3 syscall
+  handler), `contract.c`, `emit.c`; `selftest.c` (bridge-free build); `host_main.c`
   (native test harness); linker script and startup code for the Clang build.
 - **`fixtures/test_vectors.json`** — 12 v0.1 payload fixtures with expected firmware output.
 - **`fixtures/ctx_vectors.json`** — 22 v0.2 context fixtures (payload `V2` or `V2;T`).
+- **`fixtures/syscall_vectors.json`** — 22 v0.3 fixtures (payload `V3` or `V3;T`; need the patched circuit).
+- **`patches/qwenputer-ecall-trap.patch`** — the circuit + reference-machine change for v0.3 (applied to a separate clone).
+- **`scripts/gpucheck_trap.py`**, **`scripts/build_selftest.sh`** — patched-circuit check: IR vs reference trace, weights vs IR.
+- **`scripts/compare_checkpoints.py`**, **`reports/checkpoints/`** — per-tensor checkpoint comparison and hash manifests.
 - **`scripts/check_reference.py`**, **`reference_rules.py`**, **`reference_v2.py`** — independent Python oracles (no model needed).
 - **`scripts/ctx_v2.py`** — encodes a fixture's context and injects it into a copy of the ELF.
 - **`scripts/test_host_c.py`** — native C build of the guest sources vs the oracle (fixtures + random API calls).
@@ -117,6 +132,7 @@ If 3 is blocked, the outcome is `CPU-REFERENCE-ONLY` or `ROCM-BLOCKED`, not a ne
 
 ## License
 
-MIT, see [`LICENSE`](LICENSE). `guest/start.S` is adapted from Qwenputer's MIT-licensed `crt0.S`;
-its notice is reproduced in `LICENSE`. The scripts drive an unmodified upstream clone rather than
+MIT, see [`LICENSE`](LICENSE). `guest/start.S` is adapted from Qwenputer's MIT-licensed `crt0.S`,
+and `patches/qwenputer-ecall-trap.patch` modifies (and quotes) Qwenputer source; its notice is
+reproduced in `LICENSE`. The scripts drive an unmodified upstream clone rather than
 vendoring it.

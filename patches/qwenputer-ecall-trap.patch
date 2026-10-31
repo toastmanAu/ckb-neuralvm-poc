@@ -1,0 +1,73 @@
+diff --git a/experimental/riscv/chipformer/rv/core.py b/experimental/riscv/chipformer/rv/core.py
+index 679480f..7002f6a 100644
+--- a/experimental/riscv/chipformer/rv/core.py
++++ b/experimental/riscv/chipformer/rv/core.py
+@@ -971,7 +971,7 @@ def build(target: Target | None = None, text=None) -> RvCore:
+     loads = any_of(*RF.LOAD_OPS)
+     halfs, words = any_of("LH", "LHU"), uops["LW"]
+     s_halfs, s_words = uops["SH"], uops["SW"]
+-    a7_is = {v: c.and_(lits_of(A, v), f"a7=={v}") for v in (1, 93)}
++    a7_is = {v: c.and_(lits_of(A, v), f"a7=={v}") for v in (1, 93) + S.TRAP_CALLS}
+     ecall = uops["ECALL"]
+     mis_ld = c.node(c.t_and([halfs, EA[0]]) + c.t_and([words, EA[0]])
+                     + c.t_and([words, 1 - EA[0], EA[1]]), "fault.misld")
+@@ -990,7 +990,9 @@ def build(target: Target | None = None, text=None) -> RvCore:
+     fc = {0: c.and_([uops["ILLEGAL"]], "fault.0"), 1: c.and_([uops["EBREAK"]], "fault.1"),
+           2: mis_ld, 3: mis_st, 4: oor_ld, 5: oor_st,
+           7: c.node(c.t_and([ecall]) + c.t_and([ecall, a7_is[1]], -1)
+-                    + c.t_and([ecall, a7_is[93]], -1), "fault.7")}
++                    + c.t_and([ecall, a7_is[93]], -1)
++                    + sum((c.t_and([ecall, a7_is[v]], -1) for v in S.TRAP_CALLS), []),
++                    "fault.7")}
+ 
+     # ---------------------------------------------------------------- rd value, size, branch
+     addish = any_of("ADD", "ADDI", "SUB")
+@@ -1096,6 +1098,11 @@ def build(target: Target | None = None, text=None) -> RvCore:
+     case([j3, ok, sbsh, EA[6]], "SS1")
+     case(nr + [ecall, a7_is[1]], "BYTE", B[0:9])  # a byte, or (256..) a P3 special token
+     case(nr + [ecall, a7_is[93]], "HALT")
++    # ckb-neuralvm trap patch: a jump to the fixed handler word. The payload must be given as
++    # bits (an int payload is dropped: only family ids are ints), here constants one / zero.
++    trap_word = [one if S.TRAP_WORD >> i & 1 else Expr() for i in range(16)]
++    for v in S.TRAP_CALLS:
++        case(nr + [ecall, a7_is[v]], "J", trap_word)
+     case(nr + [uops["FENCE"]], "NT")
+     # digit-file ops: BD per digit (j < n), then rd = the last carry (or NT)
+     for start in ([j0, one - at_max], [one - j0]):
+diff --git a/experimental/riscv/chipformer/rv/ref.py b/experimental/riscv/chipformer/rv/ref.py
+index 5ffb64b..fd15388 100644
+--- a/experimental/riscv/chipformer/rv/ref.py
++++ b/experimental/riscv/chipformer/rv/ref.py
+@@ -527,6 +527,8 @@ class Machine:
+                 self.halted, self.exit_code = True, b
+                 self.n += 1
+                 return [S.tok("HALT")]
++            if a in S.TRAP_CALLS:  # ckb-neuralvm trap patch: jump to the handler, no link
++                return jump(S.ROM_BASE + 4 * S.TRAP_WORD, False)
+             return fault("ecall")
+         if op == "EBREAK":
+             return fault("ebreak")
+diff --git a/experimental/riscv/chipformer/rv/spec.py b/experimental/riscv/chipformer/rv/spec.py
+index b8a5aed..6145ebf 100644
+--- a/experimental/riscv/chipformer/rv/spec.py
++++ b/experimental/riscv/chipformer/rv/spec.py
+@@ -37,6 +37,7 @@ Records:
+   SB, SH                                                         V V V SS0 / SS1 (merged word)
+   ECALL a7 = 1 (putchar a0)                                      BYTE
+   ECALL a7 = 93 (exit)                                           HALT
++  ECALL a7 in TRAP_CALLS (ckb-neuralvm trap patch)               J(TRAP_WORD), no link
+   a fault                                                        FLT(cause) HEX x 8 HALT
+   before the instruction, when n == 63                           R
+ 
+@@ -86,6 +87,11 @@ TEXT_ADDR, TEXT_ROW, TEXT_ROWS = 0x8000, 16, 128
+ # the capture counter's thermometer weights are 8 * 2^m: m < 88 keeps them below bf16's max
+ # after the emitter's 2^36 fold
+ CAP_MAX = 80
++# ckb-neuralvm trap patch (not upstream): these ecall numbers jump to the fixed ROM word
++# TRAP_WORD (address ROM_BASE + 4 * TRAP_WORD) instead of faulting; nothing else changes (no
++# link register, no CSR). The firmware's handler there serves the call and returns via ra.
++TRAP_CALLS = (2052, 2071, 2074)
++TRAP_WORD = 0x10
+ TEXT_TOKEN = 1 << 24  # (P3) a Qwen text token in the circuit's token stream: TEXT_TOKEN | qwen_id
+ 
+ 

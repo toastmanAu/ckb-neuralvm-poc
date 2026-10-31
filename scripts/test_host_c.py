@@ -5,7 +5,8 @@ NOT the RV32 firmware and NOT neural execution: this checks the contract and con
 sources on x86-64 before they run on ref.Machine and the model layers.
 
   1. every v0.2 fixture (fixtures/ctx_vectors.json) and v0.1 fixture through `host_toy run`
-  2. --n random contexts x API calls through `host_toy api`, compared with reference_v2.Ctx,
+  2. --n random contexts x API calls through `host_toy api` (the v0.2 toy_* API and the v0.3
+     syscall dispatcher, ckb_trap_dispatch), compared with reference_v2.Ctx / reference_v2.syscall,
      weighted toward the edges (offsets 0/len/len+1/UINT64_MAX, indices 0..3/UINT64_MAX,
      unknown sources, missing witness, invalid contexts)
 """
@@ -21,7 +22,7 @@ import reference_rules
 import reference_v2 as R
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SRCS = ["host_main.c", "contract.c", "ctx.c", "emit.c", "parse.c"]
+SRCS = ["host_main.c", "contract.c", "ctx.c", "emit.c", "parse.c", "trap.c"]
 
 
 def build(cc: str) -> pathlib.Path:
@@ -34,7 +35,8 @@ def build(cc: str) -> pathlib.Path:
 
 def fixtures(exe) -> list[str]:
     bad = []
-    for v in json.loads((ROOT / "fixtures/ctx_vectors.json").read_text()):
+    for v in (json.loads((ROOT / "fixtures/ctx_vectors.json").read_text())
+              + json.loads((ROOT / "fixtures/syscall_vectors.json").read_text())):
         raw = bytes(ctx_v2.CTX_SIZE) if v["ctx"] is None else ctx_v2.encode(v["ctx"])
         got = subprocess.run([exe, "run", raw.hex(), v["payload"]], capture_output=True, text=True, check=True).stdout
         if got != v["expected"]:
@@ -81,7 +83,16 @@ def api(exe, n: int, seed: int) -> list[str]:
         lines.append("C " + ctx_v2.encode(ctx).hex())
         size = max(len(c.args), len(c.wit or b""))
         for _ in range(12):
-            if rng.random() < 0.6:
+            if rng.random() < 0.3:  # a v0.3 syscall, with 32-bit arguments as on RV32
+                n = rng.choice([R.LOAD_SCRIPT, R.LOAD_CELL, R.LOAD_WITNESS])
+                buf = rng.choice([0, 1, 4, 8, 32, 40, rng.randint(0, 40)])
+                off = rng.choice([0, 1, 3, 6, 8, size, size + 1, 200, 2**32 - 1, rng.getrandbits(32)])
+                idx = rng.choice([0, 0, 1, 2, 3, 2**32 - 1, rng.getrandbits(32)])
+                src = rng.choice([R.INPUT, R.OUTPUT, R.INPUT, 0, 3, 2**32 - 1])
+                rc, ln, got = R.syscall(c, n, buf, off, idx, src)
+                lines.append(f"S {n} {buf} {off} {idx} {src}")
+                want.append(f"{rc} {ln} {got.hex().upper() or '-'}")
+            elif rng.random() < 0.6:
                 src = rng.choice([R.ARGS, R.WITNESS, R.ARGS, R.WITNESS, 0, 3, R.U64])
                 buf = rng.choice([0, 1, 4, 5, 32, 40, rng.randint(0, 40)])
                 off = rng.choice([0, 1, 3, 4, size - 1 if size else 0, size, size + 1, 200, R.U64,
