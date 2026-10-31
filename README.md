@@ -43,7 +43,8 @@ and makes no consensus, proof-of-execution or security claim.
 | `leading_noise` with `--force-call` | PASS (`FAIL;R=FMT`) on both ELFs; forced `valid_fee` control unchanged |
 | Triton executor, verify mode | matches real-weights residual on every token (0 mismatches) |
 | v0.2 context fixtures: oracle / native C / `ref.Machine` | 22/22 each; native C also 24,000 random API calls, 0 mismatches |
-| v0.3 syscall fixtures, neural (fast, patched checkpoint) | 22/22 PASS on GNU; published checkpoint faults on them (negative control) |
+| v0.3 syscall fixtures, neural (fast, patched checkpoint) | 22/22 PASS on GNU and 22/22 on Clang; published checkpoint faults on them (negative control) |
+| Patched checkpoint text fidelity (upstream `textcheck`, 16 prompts) | KL vs base 6.09e-4 (floor 4.92e-4), identical to the published checkpoint; reproduces upstream's 6.1e-4 |
 | v0.2 context fixtures, neural (fast) | 22/22 PASS on GNU, 7/7 run on Clang PASS; 1.1k–7.2k chip tokens, 16–95 s |
 
 **ROCm finding.** The circuit is exact only if GEMMs accumulate in fp32. Upstream enforces that with

@@ -1,0 +1,57 @@
+Loading weights:   0%|          | 0/580 [00:00<?, ?it/s]Loading weights: 100%|██████████| 580/580 [00:00<00:00, 20106.92it/s]
+[transformers] The tokenizer you are loading from '/data/qwenputer/qwenputer-rv-trap' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+  500 tokens (28 text, 471 chip) 6s: J(134) F0(35) F0(0) F0(1) F0(12) V(180) F1(1) NT
+  1000 tokens (31 text, 968 chip) 11s: NT F0(4096) V(32623) F1(0) V(32648) F1(0) F0(2074) F0(1)
+{
+  "mode": "neural_hf_fast+trap_patched_circuit",
+  "status": "PASS",
+  "case_id": "sys_witness_missing",
+  "device": "Radeon RX 7900 XTX",
+  "backend": "hip 7.2.53211",
+  "torch": "2.14.1+rocm7.2",
+  "rocm_exact_adapter": true,
+  "circuit": "trap_patched",
+  "circuit_patch_sha256": "a35edece3f813b9f4428d43c1900ffcc630313f30de892c4e3ff5fcc3c12adcf",
+  "model_rev": null,
+  "model_index_sha256": "d43da66a62e60b23a89bc16280417ab9a9eaeba0aeba2268573d53fabf11d0ba",
+  "chipformer_json_sha256": "76a9432fed8119e66e4aee35983aa8228d3fc32e5729f5aa812200c96433ccd2",
+  "model_dir": "/data/qwenputer/qwenputer-rv-trap",
+  "firmware_sha256": "2ee30999b17d082f7a3264c9c026818465fc974e7bd660bfc99f2c987451eb4d",
+  "elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ctx/ckb_bridge_clang-sys_witness_missing.elf",
+  "fixture_set": "v0.3_sys",
+  "base_elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ckb_bridge_clang.elf",
+  "base_elf_sha256": "4c40c9a92e81c049e1766d91102edbc4a6a66a65f86d910ba53454c4e7415a53",
+  "code_sha256": "93a722f5fa33d2854f2966189a0246e2bb76d7624b9e2f185ab6c8034c1b9bd7",
+  "ctx_sha256": "32ef55b571f2462a6ce86b3cbe086b11db30585dc78e900f7ac2afee6c0b1984",
+  "expected": "FAIL;R=NOWIT\n",
+  "actual": "FAIL;R=NOWIT\n",
+  "reference_match": true,
+  "chip_tokens": 1363,
+  "text_tokens": 63,
+  "elapsed_s": 16.93,
+  "lock_error": null,
+  "replay_ok": true,
+  "replay": {
+    "ok": true,
+    "positions": 1768,
+    "owned": 1387,
+    "wrong_predictions": 0,
+    "owner_mismatch": 0,
+    "runs": 1
+  },
+  "tool_called": true,
+  "sent_payload": "V3",
+  "payload_exact": true,
+  "forced_call": false,
+  "force_ok": null,
+  "verify_mismatch": null,
+  "forced_tokens": null,
+  "force_conflict": null,
+  "head_mismatch": 0,
+  "generated": "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\nV3\n</parameter>\n</function>\n</tool_call>\n<tool_response>\nFAIL;R=NOWIT\n</tool_response>\n<think>\n\n</think>\n\nThe verification failed with the error code `NOWI`.<|im_end|>",
+  "timestamp": "2026-10-31T15:12:09+10:30"
+}

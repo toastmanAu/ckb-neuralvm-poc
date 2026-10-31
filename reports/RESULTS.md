@@ -304,7 +304,7 @@ branch of the guard turns the test red.
 ## v0.3: CKB syscall numbers decoded by a patched circuit (HANDOFF §10, 2026-10-30)
 
 **Result: with a locally rebuilt checkpoint whose circuit decodes ecall 2052/2071/2074, all 22
-syscall fixtures PASS on the neural layers (GNU ELF, fast path), lockstep `None`, replay ok,
+syscall fixtures PASS on the neural layers (fast path) with both the GNU and the Clang ELF, lockstep `None`, replay ok,
 exact payload; the v0.2 and v0.1 checks pass on it too. The published checkpoint faults on the
 same calls, as upstream's own reference machine predicts.** This is a **modified circuit** and a
 **new local checkpoint**, not the published Qwen3.5-4B-Qwenputer; every run on it is labelled
@@ -359,32 +359,34 @@ fixtures); `V3;T` prints a syscall probe transcript.
    merge then differs from our stock merge in exactly 16 tensors, all MLP weights of chip layers
    4–10; every Qwen layer, the embeddings and the anti-sink keys are byte-identical to it. Relative
    to the published checkpoint the patched one therefore differs in 24 tensors (those 16 + the 8).
-5. *Neural* (`run_neural.py` from the patched tree, model `/data/qwenputer/qwenputer-rv-trap`).
+5. *Neural* (`run_neural.py` from the patched tree, model `/data/qwenputer/qwenputer-rv-trap`;
+   GNU logs `reports/logs/neural-v3-<case>-trap-fast.log`, Clang `…-trap-clang-fast.log`). The
+   Clang ELF (`rv32im_zba`) needs 13.8% fewer chip tokens over the 22 cases (68,026 vs 78,927).
 
-| v0.3 case | expected | chip tokens / wall |
-|---|---|---|
-| `sys_two_in_two_out` | `PASS;FEE=000000001DCD6500` | 5468 / 57 s |
-| `sys_one_in_one_out` | `PASS;FEE=000000003B9ACA00` | 4250 / 45 s |
-| `sys_ctx_lock_mismatch` | `FAIL;R=LOCK` | 2276 / 27 s |
-| `sys_witness_missing` | `FAIL;R=NOWIT` | 1553 / 19 s |
-| `sys_lock_len_mismatch` | `FAIL;R=LOCK` | 1887 / 24 s |
-| `sys_long_lock_match` | `PASS;FEE=0000000000000004` | 7481 / 75 s |
-| `sys_long_lock_last_byte` | `FAIL;R=LOCK` | 5604 / 58 s |
-| `sys_input_sum_overflow` | `FAIL;R=OVF` | 3475 / 38 s |
-| `sys_output_sum_overflow` | `FAIL;R=OVF` | 4263 / 45 s |
-| `sys_max_sum_exact` | `PASS;FEE=0000000000000000` | 4771 / 49 s |
-| `sys_ctx_capacity_fail` | `FAIL;R=CAP` | 5083 / 52 s |
-| `sys_no_inputs` | `FAIL;R=NOIN` | 2476 / 28 s |
-| `sys_no_outputs` | `PASS;FEE=000000001DCD6500` | 3623 / 39 s |
-| `sys_empty_lock` | `PASS;FEE=0000000000000001` | 3767 / 41 s |
-| `sys_bad_magic` | `FAIL;R=CTX` | 1324 / 17 s |
-| `sys_bad_count` | `FAIL;R=CTX` | 1328 / 17 s |
-| `sys_bad_args_len` | `FAIL;R=CTX` | 1335 / 17 s |
-| `sys_bad_witness_len` | `FAIL;R=CTX` | 1339 / 17 s |
-| `sys_unpatched` | `FAIL;R=CTX` | 1312 / 17 s |
-| `sys_probe_long` | `S;0,20,;0,02,3210;0,04…` | 6596 / 69 s |
-| `sys_probe_missing` | `S;0,00,;0,00,;1,04,;1,…` | 5876 / 62 s |
-| `sys_probe_bad_ctx` | `S;2,00,;2,04,;2,04,;2,…` | 3840 / 65 s |
+| v0.3 case | expected | GNU chip tokens / wall | Clang chip tokens / wall |
+|---|---|---|---|
+| `sys_two_in_two_out` | `PASS;FEE=000000001DCD6500` | 5468 / 57 s | 4284 / 46 s |
+| `sys_one_in_one_out` | `PASS;FEE=000000003B9ACA00` | 4250 / 45 s | 3472 / 38 s |
+| `sys_ctx_lock_mismatch` | `FAIL;R=LOCK` | 2276 / 27 s | 1995 / 24 s |
+| `sys_witness_missing` | `FAIL;R=NOWIT` | 1553 / 19 s | 1363 / 17 s |
+| `sys_lock_len_mismatch` | `FAIL;R=LOCK` | 1887 / 24 s | 1653 / 21 s |
+| `sys_long_lock_match` | `PASS;FEE=0000000000000004` | 7481 / 75 s | 6819 / 69 s |
+| `sys_long_lock_last_byte` | `FAIL;R=LOCK` | 5604 / 58 s | 5402 / 56 s |
+| `sys_input_sum_overflow` | `FAIL;R=OVF` | 3475 / 38 s | 2807 / 31 s |
+| `sys_output_sum_overflow` | `FAIL;R=OVF` | 4263 / 45 s | 3366 / 36 s |
+| `sys_max_sum_exact` | `PASS;FEE=0000000000000000` | 4771 / 49 s | 3832 / 41 s |
+| `sys_ctx_capacity_fail` | `FAIL;R=CAP` | 5083 / 52 s | 3936 / 42 s |
+| `sys_no_inputs` | `FAIL;R=NOIN` | 2476 / 28 s | 2164 / 24 s |
+| `sys_no_outputs` | `PASS;FEE=000000001DCD6500` | 3623 / 39 s | 3062 / 34 s |
+| `sys_empty_lock` | `PASS;FEE=0000000000000001` | 3767 / 41 s | 3073 / 34 s |
+| `sys_bad_magic` | `FAIL;R=CTX` | 1324 / 17 s | 1181 / 16 s |
+| `sys_bad_count` | `FAIL;R=CTX` | 1328 / 17 s | 1186 / 16 s |
+| `sys_bad_args_len` | `FAIL;R=CTX` | 1335 / 17 s | 1193 / 15 s |
+| `sys_bad_witness_len` | `FAIL;R=CTX` | 1339 / 17 s | 1194 / 16 s |
+| `sys_unpatched` | `FAIL;R=CTX` | 1312 / 17 s | 1170 / 15 s |
+| `sys_probe_long` | `S;0,20,;0,02,3210;0,04…` | 6596 / 69 s | 6039 / 65 s |
+| `sys_probe_missing` | `S;0,00,;0,00,;1,04,;1,…` | 5876 / 62 s | 5298 / 58 s |
+| `sys_probe_bad_ctx` | `S;2,00,;2,04,;2,04,;2,…` | 3840 / 65 s | 3537 / 64 s |
 
 Also on the patched checkpoint: v0.2 `two_in_two_out` PASS (3326 chip tokens) and v0.1
 `valid_fee` PASS (4192). Only these two non-syscall cases were re-run neurally on it; the other
@@ -428,6 +430,38 @@ The v0.2 section's ELF hashes are those of commit `e8f7d6c`; the v0.3 firmware a
 entry and syscall code, and the v0.2 and v0.1 fixtures were re-checked on it on both reference
 machines (stock and patched) but re-run neurally only for the two cases above.
 
+### Text fidelity of the patched checkpoint (2026-10-31)
+
+**Result: on everything measured, the patched checkpoint's Qwen text is identical to the
+published checkpoint's, and both reproduce upstream's published text-fidelity numbers on ROCm.**
+
+*Upstream's check* (`python -m chipformer.rv.textcheck BASE MERGED`, unmodified, each model run
+from its own tree; JSON in `reports/textcheck/`, logs `reports/logs/textcheck-*.log`, ~1.5 min
+each). It compares the merged model's next-token distributions over Qwen's vocabulary with base
+Qwen3.5-4B (`851bf6e`) on 16 plain-text prompts, against the noise floor between base Qwen's own
+sdpa and eager attention kernels:
+
+| | mean KL vs base | noise floor | greedy text identical to base | top-1 agreement | tokenizer |
+|---|---|---|---|---|---|
+| upstream's report (`docs/rv32.md`, their hardware) | 6.1e-4 | 5.1e-4 | 10/16 | – | 4/4 |
+| published checkpoint, this machine | 6.088e-4 | 4.918e-4 | 11/16 | 98.76% | 4/4 |
+| patched checkpoint, this machine | 6.088e-4 | 4.918e-4 | 11/16 | 98.76% | 4/4 |
+
+Published and patched agree exactly on every per-prompt KL, top-1 rate and greedy outcome. That
+is expected rather than a strong result: these prompts contain no chip tokens, and the two
+checkpoints differ only in chip-layer MLP weights (and, against the published one, the mute
+column of 8 `k_proj`s), so this check shows the patch has no effect on plain text but cannot
+see past that.
+
+*Text around the computer.* To cover text written with chip positions in context, the two
+non-syscall cases already run on the patched checkpoint were run on the published one with the
+same v0.3 ELF (`213d4f15…`, stock tree; logs `reports/logs/neural-v3fw-*-published-fast.log`).
+v0.1 `valid_fee` and v0.2 `two_in_two_out` both PASS on both, and the complete generated text,
+the tool call, the 4192 / 3326 chip tokens and Qwen's reply after `</tool_response>`, is
+identical between the two checkpoints. (In `valid_fee` that reply says "The fee is
+000000003B9A00" for the firmware's `000000003B9ACA00`, identically on both models: a Qwen
+transcription slip, and one more reason the verdict is only ever the firmware's bytes.)
+
 ## Not done / open
 
 - Executor-only timing was not measured (it is not neural inference); only verify mode was run.
@@ -438,10 +472,11 @@ machines (stock and patched) but re-run neurally only for the two cases above.
   section): such calls are refused before the run instead of silently corrupted.
 - v0.2 on Clang: 7 of the 22 context fixtures were run on the neural layers (all 22 on
   `ref.Machine`). The forced feed and executor verify were not repeated on v0.2.
-- v0.3 ran on the GNU ELF only; the Clang ELF passed v0.3 on both reference machines but was
-  not run neurally. The patched checkpoint was not run through upstream's text-fidelity check
-  (`chipformer.rv.textcheck`); its Qwen layers are byte-identical to our stock merge, which
-  differs from the published one only in the anti-sink keys described above.
+- v0.3 on Clang: all 22 syscall fixtures were run neurally on the patched checkpoint and pass
+  (2026-10-31). The forced feed and executor verify were not repeated on v0.3.
+- Text fidelity of the patched checkpoint was measured on upstream's 16 plain-text prompts and
+  on two tool-call cases (see "Text fidelity" above), not on a benchmark such as MMLU, and not
+  on text following a v0.3 syscall run (the published model cannot produce one to compare).
 - The trap has no return-address register: syscalls must be made through `ckb_syscall`. A real
   trap (saving the PC, returning with `mret`) would need a register write in the circuit.
 
@@ -487,6 +522,8 @@ $PY $POC/scripts/compare_checkpoints.py $TRAPM $POC/reports/checkpoints/merge-st
 $PY $POC/scripts/run_upstream_reference.py --elf $POC/build/ckb_bridge.elf --tokenizer $M/tokenizer.json
 # (from the stock tree, the same command asserts that each v0.3 syscall faults with cause ecall)
 $PY $POC/scripts/run_neural.py --model $TRAPM --elf $POC/build/ckb_bridge.elf --case sys_two_in_two_out
+$PY $POC/scripts/run_neural.py --model $TRAPM --elf $POC/build/ckb_bridge_clang.elf --case sys_two_in_two_out
+$PY -m chipformer.rv.textcheck $BASE $TRAPM --out $POC/reports/textcheck/trap.json   # text fidelity
 ```
 
 `--case` takes any id from any fixture file (ids are unique across all three); a v0.2 id makes the

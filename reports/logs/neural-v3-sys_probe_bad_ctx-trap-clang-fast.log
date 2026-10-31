@@ -1,0 +1,63 @@
+Loading weights:   0%|          | 0/580 [00:00<?, ?it/s]Loading weights: 100%|██████████| 580/580 [00:00<00:00, 18499.17it/s]
+[transformers] The tokenizer you are loading from '/data/qwenputer/qwenputer-rv-trap' with an incorrect regex pattern: https://huggingface.co/mistralai/Mistral-Small-3.1-24B-Instruct-2503/discussions/84#69121093e8b480e709447d5e. This will lead to incorrect tokenization. You should set the `fix_mistral_regex=True` flag when loading this tokenizer to fix this issue.
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+  500 tokens (30 text, 469 chip) 6s: NT F0(97) J(134) F0(35) F0(0) F0(1) F0(12) V(180)
+  1000 tokens (33 text, 966 chip) 11s: F0(50) F0(1) F0(0) J(232) J(537) V(0) F1(4) V(49)
+  1500 tokens (42 text, 1457 chip) 16s: J(21) F0(1) F0(0) F0(0) BYTE(50) '2' J(1696) F0(32764)
+  2000 tokens (53 text, 1946 chip) 21s: F0(0) BYTE(59) ';' J(1191) F0(0) F0(1) F0(2) V(4776)
+  2500 tokens (64 text, 2435 chip) 26s: ST0 ST0 V(32576) F1(0) F0(4096) F0(2074) F0(1) NT
+  3000 tokens (76 text, 2923 chip) 31s: NT V(2692) F1(8) F0(2071) F0(4096) V(26) F1(4) V(0)
+  3500 tokens (85 text, 3414 chip) 36s: V(31352) F1(7) J(21) F0(1) F0(0) F0(0) BYTE(48) '0'
+  4000 tokens (462 text, 3537 chip) 55s: '0' '4' ',' ';' '2' ',' '0' '8'
+{
+  "mode": "neural_hf_fast+trap_patched_circuit",
+  "status": "PASS",
+  "case_id": "sys_probe_bad_ctx",
+  "device": "Radeon RX 7900 XTX",
+  "backend": "hip 7.2.53211",
+  "torch": "2.14.1+rocm7.2",
+  "rocm_exact_adapter": true,
+  "circuit": "trap_patched",
+  "circuit_patch_sha256": "a35edece3f813b9f4428d43c1900ffcc630313f30de892c4e3ff5fcc3c12adcf",
+  "model_rev": null,
+  "model_index_sha256": "d43da66a62e60b23a89bc16280417ab9a9eaeba0aeba2268573d53fabf11d0ba",
+  "chipformer_json_sha256": "76a9432fed8119e66e4aee35983aa8228d3fc32e5729f5aa812200c96433ccd2",
+  "model_dir": "/data/qwenputer/qwenputer-rv-trap",
+  "firmware_sha256": "e17acce28a414cee60763e26c1c6b1998128aefaf11a133377688e7dc9e12b83",
+  "elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ctx/ckb_bridge_clang-sys_probe_bad_ctx.elf",
+  "fixture_set": "v0.3_sys",
+  "base_elf": "/home/phill/qwencupter/ckb-neuralvm-poc/build/ckb_bridge_clang.elf",
+  "base_elf_sha256": "4c40c9a92e81c049e1766d91102edbc4a6a66a65f86d910ba53454c4e7415a53",
+  "code_sha256": "93a722f5fa33d2854f2966189a0246e2bb76d7624b9e2f185ab6c8034c1b9bd7",
+  "ctx_sha256": "b879b1b07be5a28c5c4fea2229a80eb2e78b4457f747ce4fbb15bc9dde8b48ca",
+  "expected": "S;2,00,;2,04,;2,04,;2,04,;2,04,;2,08,;2,04,;2,08,;2,08,\n",
+  "actual": "S;2,00,;2,04,;2,04,;2,04,;2,04,;2,08,;2,04,;2,08,;2,08,\n",
+  "reference_match": true,
+  "chip_tokens": 3537,
+  "text_tokens": 600,
+  "elapsed_s": 63.55,
+  "lock_error": null,
+  "replay_ok": true,
+  "replay": {
+    "ok": true,
+    "positions": 4480,
+    "owned": 3604,
+    "wrong_predictions": 0,
+    "owner_mismatch": 0,
+    "runs": 1
+  },
+  "tool_called": true,
+  "sent_payload": "V3;T",
+  "payload_exact": true,
+  "forced_call": false,
+  "force_ok": null,
+  "verify_mismatch": null,
+  "forced_tokens": null,
+  "force_conflict": null,
+  "head_mismatch": 0,
+  "generated": "<tool_call>\n<function=ckb_verify>\n<parameter=payload>\nV3;T\n</parameter>\n</function>\n</tool_call>\n<tool_response>\nS;2,00,;2,04,;2,04,;2,04,;2,04,;2,08,;2,04,;2,08,;2,08,\n</tool_response>\n<think>\n\n</think>\n\nThe verification of the payload `V3;T` resulted in the following output:\n`S;2,00,;2,04,;2,04,;2,04,;2,04,;2,08,;2,04,;2,08,;2,08,`\n\nThis output appears to be a sequence of capacity and lock tags, likely representing the state of the wallet or the transaction after verification. The format suggests a structured representation of the CKB wallet's state, where each segment corresponds to a specific capacity or lock type.\n\nThe verification process seems to have successfully processed the payload, and the output provides detailed information about the resulting state. The specific values and structure of the output indicate that the payload was interpreted correctly by the verifier.\n\nThe output `S;2,00,;2,04,;2,04,;2,04,;2,04,;2,08,;2,04,;2,08,;2,08,` likely represents the final state of the wallet after the verification process, detailing the capacities and locks associated with the transaction. The specific values and structure of the output indicate that the payload was interpreted correctly by the verifier.\n\nThe verification process seems to have successfully processed the payload, and the output provides detailed information about the resulting state. The specific values and structure of the output indicate that the payload was interpreted correctly by the verifier.\n\nThe output `S;2,00,;2,04,;2,04,;2,04,;2,04,;2,08,;2,04,;2,08,;2,08,` likely represents the final state of the wallet after the verification process, detailing the capacities and locks associated with the transaction. The specific values and structure of the output indicate that the payload was interpreted correctly by the verifier.\n\nThe verification process seems to have successfully processed the payload, and the output provides detailed information about the resulting state. The specific values and structure of the output indicate that the payload was interpreted correctly by the verifier.\n\nThe output `S;2,00,;2,04,;2,04,;2,04,;2,04,;2,08,;2,0",
+  "timestamp": "2026-10-31T15:31:03+10:30"
+}
